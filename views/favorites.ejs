@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Favorites</title>
+</head>
+<body>
+    <h1>Favorites</h1>
+    <ul>
+        <% favorites.forEach(movie => { %>
+            <li>
+                <strong><%= movie.title %></strong> (<%= movie.year %>)
+            </li>
+        <% }) %>
+    </ul>
+    <a href="/">Back to Home</a>
+</body>
+</html>

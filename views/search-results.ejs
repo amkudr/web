@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Search</title>
+    <link rel="stylesheet" href="/path/to/bootstrap.min.css">
+    <script src="/path/to/sweetalert2.all.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Search Movies</h1>
+        <form id="search-form">
+            <input type="text" id="search-query" placeholder="Enter movie title..." class="form-control" required>
+            <button type="submit" class="btn btn-primary mt-2">Search</button>
+        </form>
+        <div id="movies-container" class="row mt-4"></div>
+    </div>
+
+    <script src="/js/movies.js"></script>
+    <script>
+        document.getElementById("search-form").addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const query = document.getElementById("search-query").value.trim();
+            const moviesContainer = document.getElementById("movies-container");
+
+            if (!query) {
+                Swal.fire("Error", "Please enter a search term.", "error");
+                return;
+            }
+
+            // Fetch movies using MovieAPI
+            const movies = await MovieAPI.fetchMovies(query);
+            MovieAPI.RenderMoviesCard(movies, moviesContainer);
+        });
+    </script>
+</body>
+</html>

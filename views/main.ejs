@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="/style.css">
+  <title>My Movies</title>
+</head>
+<body>
+    <div class="container mt-5">
+        <!-- Display user info and logout button -->
+        <div class="d-flex justify-content-between align-items-center">
+          <% if (user) { %>
+            <p>Logged in as: <strong><%= user.username %></strong></p>
+          <% } else { %>
+            <p>Not logged in.</p>
+          <% } %>
+          <a href="/logout" class="btn btn-danger">Logout</a>
+        </div>
+      
+    
+    <h1>My Movies</h1>
+    <!-- Rest of your content -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <form id="search-form" class="w-100 d-flex">
+        <input type="text" id="search-query" class="form-control me-2" placeholder="Search Movies..." style="width: 80%;">
+        <button type="submit" class="btn btn-primary" style="width: 18%;">Search</button>
+      </form>
+    </div>
+    <div class="mb-4">
+      <a href="/" class="btn btn-secondary" style="background-color: gray; color: white;">Back to Main</a>
+    </div>
+    <div class="row" id="movies-container"></div>
+  </div>
+  <script src="/movie.js"></script>
+</body>
+</html>

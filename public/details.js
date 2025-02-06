@@ -48,7 +48,7 @@ function renderMovieDetails(details) {
     <div class="card" style="max-width: 800px; margin: auto; background-color: rgb(39, 34, 34); border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); color: white; position: relative;">
       <div class="card-body">
         <div class="d-flex">
-          <img src="${details.Poster}" alt="${details.Title}" style="width: 150px; height: auto; margin-right: 20px; border-radius: 10px;">
+          <img src="${(details.Poster && details.Poster !== 'N/A') ? details.Poster : '/default-image.jpg'}" alt="${details.Title}" style="width: 150px; height: auto; margin-right: 20px; border-radius: 10px;">
           <div>
             <h2>${details.Title}</h2>
             <p><strong>Released:</strong> ${details.Released}</p>
@@ -86,6 +86,8 @@ function renderMovieDetails(details) {
     </div>
   `;
 }
+
+
 
 function goBack() {
   window.location.href = "/main"; // Adjust this if your main page route differs

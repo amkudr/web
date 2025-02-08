@@ -1,9 +1,8 @@
 // public/details.js
 
-const API_KEY = "13a68afd"; // Replace with your actual OMDb API key if needed
+const API_KEY = "13a68afd"; 
 const BASE_URL = "http://www.omdbapi.com/";
 
-// Define a minimal MovieAPI with the fetchMoviesDetails method.
 class MovieAPI {
   static async fetchMoviesDetails(imdbID) {
     try {
@@ -90,7 +89,7 @@ function renderMovieDetails(details) {
 
 
 function goBack() {
-  window.location.href = "/main"; // Adjust this if your main page route differs
+  window.location.href = "/main";
 }
 
 async function toggleFavorite(imdbID, title, poster, year) {

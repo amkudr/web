@@ -1,6 +1,6 @@
 // movie.js
 
-const API_KEY = "13a68afd"; // Replace with your actual OMDB API key if needed
+const API_KEY = "13a68afd"; 
 const BASE_URL = "http://www.omdbapi.com/";
 
 // Movie class to structure movie objects (optional, used for clarity)
@@ -63,7 +63,6 @@ class MovieAPI {
     }
 }
 
-// Add event listener to the search form
 document.getElementById("search-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const query = document.getElementById("search-query").value.trim();

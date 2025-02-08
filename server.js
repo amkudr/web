@@ -2,9 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
-const usersPath = path.join(__dirname, 'data', 'users.json');
 const fs = require('fs/promises');
 const favoritesPath = path.join(__dirname, 'data', 'favorites.json');
+const User = require('./model/User');
 
 
 const app = express();
@@ -46,21 +46,13 @@ app.post('/register', async (req, res) => {
   }
 
   try {
-    // Read existing users from users.json
-    const data = await fs.readFile(usersPath, 'utf-8');
-    const users = JSON.parse(data);
-
-    // Check if the email is already registered
-    if (users.some(user => user.email === email)) {
-      return res.status(400).render('register', { error: 'Email is already registered.' });
+    const user = await User.register(username, email, password);
+    if (!user) {
+      return res.status(400).render('register', { error: 'Username already exists.' });
     }
-
-    users.push({ username, email, password });
-    await fs.writeFile(usersPath, JSON.stringify(users, null, 2));
-
-    
-    req.session.user = { username, email };
-    res.redirect('/main');
+      User.register(username, email, password);
+      req.session.user = { username, email };
+      res.redirect('/main');
   } catch (error) {
     console.error('Error registering user:', error);
     res.status(500).render('register', { error: 'Internal Server Error.' });
@@ -68,14 +60,14 @@ app.post('/register', async (req, res) => {
 });
 
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    if (username === 'asd' && password === 'asd') {
-      req.session.user = { username: username }; 
-      res.redirect('/main');
-    } else {
-      res.render('login', { error: 'Invalid username or password.' });
+    const user = await User.login(username, password);
+    if (!user) {
+      return res.render('login', { error: 'Invalid username or password.' });
     }
+    req.session.user = user;
+    res.redirect('/main');
 });
 
 // Route to render the movie search page (main.ejs)

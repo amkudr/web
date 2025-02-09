@@ -35,11 +35,6 @@ class User {
         return newUser;
     }
 
-    // static async isExist(username) {
-    //     const users = await User.loadUsers();
-    //     return users[username] ? true : false;
-    // }
-
     static async login(username, password) {
         const users = await User.loadUsers();
         const user = users[username];
@@ -48,26 +43,37 @@ class User {
         return user;
     }
 
-    //   async toggleFavorite(imdbID, title, poster, year) {
-    //     const users = await User.loadUsers();
-    //     const user = users[this.username];
+    static async isFavorite(imdbID, username) {
+        const users = await User.loadUsers();
+        const user = users[username];
+        if (!user.favorites) return false;
+        return user.favorites.includes(imdbID);
+    }
 
-    //     if (!user.favorites) user.favorites = [];
+    static async addToFavorites(imdbID, username) {
+        const users = await User.loadUsers();
+        const user = users[username];
+        if (!user) return null;
 
-    //     const index = user.favorites.findIndex(fav => fav.imdbID === imdbID);
-    //     let message;
+        // Check if movie is already in favorites
+        if (!user.favorites.includes(imdbID)) {
+            user.favorites.push(imdbID);
+            await User.saveUsers(users);
+            return "Added to favorites";
+        }
 
-    //     if (index >= 0) {
-    //       user.favorites.splice(index, 1);
-    //       message = "Removed from favorites";
-    //     } else {
-    //       user.favorites.push({ imdbID, title, poster, year });
-    //       message = "Added to favorites";
-    //     }
+        return "Already in favorites";
+    }
+    static async removeFromFavorites(imdbID, username) {
+        const users = await User.loadUsers();
+        const user = users[username];
 
-    //     await User.saveUsers(users);
-    //     return message;
-    //   }
+        if (!user || !user.favorites) return null;
+
+        user.favorites = user.favorites.filter(fav => fav !== imdbID);
+        await User.saveUsers(users);
+        return "Removed from favorites";
+    }
 }
 
 module.exports = User;

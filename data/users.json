@@ -1,22 +1,13 @@
-[
-  {
-    "firstName": "John",
-    "email": "john@example.com",
-    "password": "123456"
-  },
-  {
-    "username": "asd",
-    "email": "asd@asd",
-    "password": "asd"
-  },
-  {
-    "username": "test",
-    "email": "test@test",
-    "password": "test"
-  },
-  {
-    "username": "awe",
-    "email": "qwe@qwe",
-    "password": "qwe"
+{
+  "AV": {
+    "username": "AV",
+    "email": "A@a",
+    "password": "123",
+    "favorites": [
+      "tt0064418",
+      "tt0410297",
+      "tt2063666",
+      "tt14596212"
+    ]
   }
-]
+}

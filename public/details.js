@@ -1,6 +1,6 @@
 // public/details.js
 
-const API_KEY = "13a68afd"; 
+const API_KEY = "13a68afd";
 const BASE_URL = "http://www.omdbapi.com/";
 
 class MovieAPI {
@@ -38,9 +38,14 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 });
 
-function renderMovieDetails(details) {
+async function renderMovieDetails(details) {
   const detailsContainer = document.getElementById("movie-details");
-  const isFavorite = isMovieInFavorites(details.imdbID);
+
+  // Check if the movie in favorites
+  let isFavorite = false;
+  const response = await fetch(`/favorites/isFavorite?imdbID=${details.imdbID}`);
+  const result = await response.json();
+  isFavorite = result.isFavorite;
   const storedLinks = details.links || [];
 
   detailsContainer.innerHTML = `
@@ -58,9 +63,9 @@ function renderMovieDetails(details) {
             <p><strong>IMDb Rating:</strong> ${details.imdbRating}</p>
             <div class="mt-3">
               <a href="https://www.imdb.com/title/${details.imdbID}" target="_blank" class="btn btn-primary" style="background-color: rgb(255, 215, 0); border: none;">View on IMDb</a>
-              <button class="btn" 
-                style="background-color: ${isFavorite ? '#f44336' : '#4CAF50'}; border: none; color: white;"
-                onclick="toggleFavorite('${details.imdbID}', '${details.Title}', '${details.Poster}', '${details.Year}')">
+              <button class="btn favorite-btn" 
+                data-imdbid="${details.imdbID}"
+                style="background-color: ${isFavorite ? '#f44336' : '#4CAF50'}; border: none; color: white;">
                 ${isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
               </button>
             </div>
@@ -84,6 +89,12 @@ function renderMovieDetails(details) {
       <button class="btn btn-secondary" onclick="goBack()" style="background-color: rgb(128, 128, 128); border: none; color: white; position: absolute; bottom: 10px; right: 10px;">&larr; Back</button>
     </div>
   `;
+  setTimeout(() => {
+    document.querySelector(`.favorite-btn[data-imdbid="${details.imdbID}"]`)
+      .addEventListener("click", function () {
+        toggleFavorite(details.imdbID, this);
+      });
+  }, 0);
 }
 
 
@@ -92,17 +103,24 @@ function goBack() {
   window.location.href = "/main";
 }
 
-async function toggleFavorite(imdbID, title, poster, year) {
+async function toggleFavorite(imdbID, button) {
   try {
+    // Check if the movie is already in favorites
+    const responseCheck = await fetch(`/favorites/isFavorite?imdbID=${imdbID}`);
+    const resultCheck = await responseCheck.json();
+    const isFavorite = resultCheck.isFavorite;
+
+    // Choose the correct method based on the current state
+    const method = isFavorite ? "DELETE" : "POST";
     const response = await fetch("/favorites", {
-      method: "POST",
+      method: method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imdbID, title, poster, year }),
+      body: JSON.stringify({ imdbID }),
     });
 
     if (!response.ok) {
       if (response.status === 403) {
-        throw new Error("You need to log in to add favorites.");
+        throw new Error("You need to log in to manage favorites.");
       }
       throw new Error(`Server responded with status: ${response.status}`);
     }
@@ -110,26 +128,52 @@ async function toggleFavorite(imdbID, title, poster, year) {
     const result = await response.json();
     console.log("Server response:", result);
 
-    const favoriteButton = document.querySelector(`button[onclick*="toggleFavorite('${imdbID}'"]`);
-    if (favoriteButton) {
-      if (result.message === "Added to favorites") {
-        favoriteButton.textContent = "Remove from Favorites";
-        favoriteButton.style.backgroundColor = "#f44336";
-      } else if (result.message === "Removed from favorites") {
-        favoriteButton.textContent = "Add to Favorites";
-        favoriteButton.style.backgroundColor = "#4CAF50";
-      }
-    }
+    // Update the button text and color
+    button.textContent = method === "POST" ? "Remove from Favorites" : "Add to Favorites";
+    button.style.backgroundColor = method === "POST" ? "#f44336" : "#4CAF50";
   } catch (error) {
     console.error("Error updating favorites:", error);
     Swal.fire("Error", error.message, "error");
   }
 }
 
-function isMovieInFavorites(imdbID) {
-  const favorites = JSON.parse(localStorage.getItem("favorites")) || [];
-  return favorites.some(movie => movie.imdbID === imdbID);
-}
+// async function toggleFavorite(imdbID) {
+//   try {
+//     const response = await fetch("/favorites", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({imdbID}),
+//     });
+
+//     if (!response.ok) {
+//       if (response.status === 403) {
+//         throw new Error("You need to log in to add favorites.");
+//       }
+//       throw new Error(`Server responded with status: ${response.status}`);
+//     }
+
+//     const result = await response.json();
+//     console.log("Server response:", result);
+//     const favoriteButton = document.querySelector(`button[onclick*="toggleFavorite('${imdbID}')"]`);
+//     if (favoriteButton) {
+//       if (result.message === "Added to favorites") {
+//         favoriteButton.textContent = "Remove from Favorites";
+//         favoriteButton.style.backgroundColor = "#f44336";
+//       } else if (result.message === "Removed from favorites") {
+//         favoriteButton.textContent = "Add to Favorites";
+//         favoriteButton.style.backgroundColor = "#4CAF50";
+//       }
+//     }
+//   } catch (error) {
+//     console.error("Error updating favorites:", error);
+//     Swal.fire("Error", error.message, "error");
+//   }
+// }
+
+// function isMovieInFavorites(imdbID) {
+//   const favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+//   return favorites.some(movie => movie.imdbID === imdbID);
+// }
 
 function loadLinks(imdbID) {
   const linksList = document.getElementById("links-list");

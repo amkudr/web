@@ -128,6 +128,100 @@ app.delete('/favorites', async (req, res) => {
   res.json({ message: result });
 });
 
+app.get('/:movieID/links', async (req, res) => {
+  try {
+      if (!req.session.user) {
+          return res.status(403).json({ message: "You need to log in to view links." });
+      }
+
+      const { movieID } = req.params; 
+      const username = req.session.user.username;
+
+      let links = await User.getMovieLinks(movieID, username);
+
+      res.json({ links });
+  } catch (error) {
+      console.error("Error fetching links:", error);
+      res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post('/favorites/links', async (req, res) => {
+  try {
+      if (!req.session.user) {
+          return res.status(403).json({ message: "You need to log in to add links." });
+      }
+
+      const { imdbID, name, url, description } = req.body;
+      if (!imdbID || !name || !url) {
+          return res.status(400).json({ message: "Missing required fields." });
+      }
+
+      const username = req.session.user.username;
+      const result = await User.addLinkToMovie(imdbID, username, name, url, description);
+
+      res.json({ message: result });
+  } catch (error) {
+      console.error("Error adding link:", error);
+      res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.delete('/:movieID/links', async (req, res) => {
+  try {
+      if (!req.session.user) {
+          return res.status(403).json({ message: "You need to log in to remove links." });
+      }
+
+      const { movieID } = req.params;
+      const { index } = req.body;
+      if (index === undefined) {
+        return res.status(400).json({ message: "Invalid or missing index." });
+      }
+
+      const username = req.session.user.username;
+      const result = await User.removeLinkFromMovie(movieID, username, index);
+
+      if (result === null) {
+        return res.status(404).json({ message: "Link not found or invalid index." });
+    }
+
+    res.json({ message: result }); 
+
+  } catch (error) {
+      console.error("Error removing link:", error);
+      res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.put('/:movieID/links', async (req, res) => {
+  try {
+      if (!req.session.user) {
+          return res.status(403).json({ message: "You need to log in to edit links." });
+      }
+
+      const { movieID } = req.params;
+      const { index, name, url, description } = req.body;
+      if (index === undefined || !name || !url) {
+          return res.status(400).json({ message: "Missing required fields." });
+      }
+
+      const username = req.session.user.username;
+      const result = await User.editLinkInMovie(movieID, username, index, name, url, description);
+
+      if (result === "Movie is not in favorites" || result === "Link not found") {
+          return res.status(404).json({ message: result });
+      }
+
+      res.json({ message: result });
+
+  } catch (error) {
+      console.error("Error editing link:", error);
+      res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
 
 // app.post('/favorites', async (req, res) => {
 //   // Check if the user is logged in

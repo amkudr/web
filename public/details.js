@@ -1,5 +1,3 @@
-// public/details.js
-
 const API_KEY = "13a68afd";
 const BASE_URL = "http://www.omdbapi.com/";
 
@@ -33,8 +31,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   const movieDetails = await MovieAPI.fetchMoviesDetails(imdbID);
   if (movieDetails) {
-    renderMovieDetails(movieDetails);
-    loadLinks(movieDetails.imdbID);
+    await renderMovieDetails(movieDetails);
+    await loadLinks(imdbID);
   }
 });
 
@@ -137,63 +135,45 @@ async function toggleFavorite(imdbID, button) {
   }
 }
 
-// async function toggleFavorite(imdbID) {
-//   try {
-//     const response = await fetch("/favorites", {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({imdbID}),
-//     });
+async function loadLinks(imdbID) {
+  try {
+    const linksList = document.getElementById("links-list");
+    if (!linksList) {
+      console.error("Error: Element with ID 'links-list' not found.");
+      return;
+    }
+    linksList.innerHTML = '';
 
-//     if (!response.ok) {
-//       if (response.status === 403) {
-//         throw new Error("You need to log in to add favorites.");
-//       }
-//       throw new Error(`Server responded with status: ${response.status}`);
-//     }
+    const response = await fetch(`/${imdbID}/links`);
+    if (!response.ok) {
+      throw new Error(`Error fetching links: ${response.status} ${response.statusText}`);
+    }
 
-//     const result = await response.json();
-//     console.log("Server response:", result);
-//     const favoriteButton = document.querySelector(`button[onclick*="toggleFavorite('${imdbID}')"]`);
-//     if (favoriteButton) {
-//       if (result.message === "Added to favorites") {
-//         favoriteButton.textContent = "Remove from Favorites";
-//         favoriteButton.style.backgroundColor = "#f44336";
-//       } else if (result.message === "Removed from favorites") {
-//         favoriteButton.textContent = "Add to Favorites";
-//         favoriteButton.style.backgroundColor = "#4CAF50";
-//       }
-//     }
-//   } catch (error) {
-//     console.error("Error updating favorites:", error);
-//     Swal.fire("Error", error.message, "error");
-//   }
-// }
+    const storedLinks = await response.json();
+    if (!Array.isArray(storedLinks.links)) {
+      throw new Error("Invalid response format");
+    }
 
-// function isMovieInFavorites(imdbID) {
-//   const favorites = JSON.parse(localStorage.getItem("favorites")) || [];
-//   return favorites.some(movie => movie.imdbID === imdbID);
-// }
+    storedLinks.links.forEach((link, index) => {
+      const listItem = `
+        <li>
+          ${link.name}: <a href="${link.url}" target="_blank">${link.url}</a>
+          <div>${link.description}</div>
+          <button class="btn btn-warning btn-sm" onclick="editLink('${imdbID}', '${index}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="removeLink('${imdbID}', '${index}')">Remove</button>
+        </li>
+      `;
+      linksList.insertAdjacentHTML('beforeend', listItem);
+    });
 
-function loadLinks(imdbID) {
-  const linksList = document.getElementById("links-list");
-  linksList.innerHTML = '';
-  const storedLinks = JSON.parse(localStorage.getItem(`links_${imdbID}`)) || [];
-
-  storedLinks.forEach((link, index) => {
-    const listItem = `
-      <li>
-        ${link.name}: <a href="${link.url}" target="_blank">${link.url}</a>
-        <div>${link.description}</div>
-        <button class="btn btn-warning btn-sm" onclick="editLink('${imdbID}', ${index})">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="removeLink('${imdbID}', ${index})">Remove</button>
-      </li>
-    `;
-    linksList.insertAdjacentHTML('beforeend', listItem);
-  });
+  } catch (error) {
+    console.error("Failed to load links:", error);
+    document.getElementById("links-list").innerHTML = `<li class="text-danger">Error loading links</li>`;
+  }
 }
 
-function addLink(imdbID) {
+
+async function addLink(imdbID) {
   Swal.fire({
     title: "Add Link",
     html: `
@@ -205,24 +185,51 @@ function addLink(imdbID) {
     confirmButtonText: "Add",
     preConfirm: () => {
       return {
-        name: document.getElementById('link-name').value,
-        url: document.getElementById('link-url').value,
-        description: document.getElementById('link-description').value
+        name: document.getElementById('link-name').value.trim(),
+        url: document.getElementById('link-url').value.trim(),
+        description: document.getElementById('link-description').value.trim()
       };
     }
-  }).then((result) => {
+  }).then(async (result) => {
     if (result.isConfirmed) {
-      const storedLinks = JSON.parse(localStorage.getItem(`links_${imdbID}`)) || [];
-      storedLinks.push(result.value);
-      localStorage.setItem(`links_${imdbID}`, JSON.stringify(storedLinks));
-      loadLinks(imdbID);
+      const { name, url, description } = result.value;
+
+      if (!name || !url) {
+        Swal.fire("Error", "Name and URL are required!", "error");
+        return;
+      }
+
+      try {
+        const response = await fetch("/favorites/links", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imdbID, name, url, description })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          Swal.fire("Error", errorData.message || "Failed to add link", "error");
+          return;
+        }
+
+        Swal.fire("Success", "Link added successfully", "success");
+        await loadLinks(imdbID);
+
+      } catch (error) {
+        console.error("Error adding link:", error);
+        Swal.fire("Error", "An unexpected error occurred", "error");
+      }
     }
   });
 }
 
-function editLink(imdbID, index) {
-  const storedLinks = JSON.parse(localStorage.getItem(`links_${imdbID}`)) || [];
-  const link = storedLinks[index];
+async function editLink(imdbID, index) {
+  const response = await fetch(`/${imdbID}/links`);
+  if (!response.ok) {
+    Swal.fire("Error", "Failed to load links", "error");
+    return;
+  }
+  const link = (await response.json()).links[index];
 
   Swal.fire({
     title: "Edit Link",
@@ -240,18 +247,55 @@ function editLink(imdbID, index) {
         description: document.getElementById('link-description').value
       };
     }
-  }).then((result) => {
+  }).then(async (result) => {
     if (result.isConfirmed) {
-      storedLinks[index] = result.value;
-      localStorage.setItem(`links_${imdbID}`, JSON.stringify(storedLinks));
-      loadLinks(imdbID);
+
+      const { name, url, description } = result.value;
+      const response = await fetch(`/${imdbID}/links`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index, name, url, description })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        Swal.fire("Error", errorData.message || "Failed to update link", "error");
+        return;
+      }
+      Swal.fire("Success", "Link updated successfully", "success");
+      await loadLinks(imdbID);
     }
   });
 }
 
-function removeLink(imdbID, index) {
-  const storedLinks = JSON.parse(localStorage.getItem(`links_${imdbID}`)) || [];
-  storedLinks.splice(index, 1);
-  localStorage.setItem(`links_${imdbID}`, JSON.stringify(storedLinks));
-  loadLinks(imdbID);
+async function removeLink(imdbID, index) {
+  Swal.fire({
+    title: "Remove Link",
+    text: "Are you sure you want to remove this link?",
+    showCancelButton: true,
+    confirmButtonText: "Remove",
+    confirmButtonColor: "#f44336"
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`/${imdbID}/links`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ index })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          Swal.fire("Error", errorData.message || "Failed to remove link", "error");
+          return;
+        }
+
+        Swal.fire("Success", "Link removed successfully", "success");
+        await loadLinks(imdbID);
+
+      } catch (error) {
+        console.error("Error removing link:", error);
+        Swal.fire("Error", "An unexpected error occurred", "error");
+      }
+    }
+  });
 }

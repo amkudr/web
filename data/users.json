@@ -2,12 +2,36 @@
   "AV": {
     "username": "AV",
     "email": "A@a",
-    "password": "123",
-    "favorites": [
-      "tt0064418",
-      "tt0410297",
-      "tt2063666",
-      "tt14596212"
-    ]
+    "password": "1",
+    "favorites": {
+      "tt3766394": [
+        {
+          "name": "New",
+          "url": "NewUrl",
+          "description": "NewDesc"
+        }
+      ],
+      "tt9454892": []
+    }
+  },
+  "AB": {
+    "username": "AB",
+    "email": "A@a",
+    "password": "2",
+    "favorites": {
+      "tt3766394": [
+        {
+          "name": "New2",
+          "url": "NewUrl2",
+          "description": "22"
+        }
+      ]
+    }
+  },
+  "A3": {
+    "username": "A3",
+    "email": "a@1",
+    "password": "3",
+    "favorites": {}
   }
 }

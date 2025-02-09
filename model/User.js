@@ -4,11 +4,11 @@ const path = require('path');
 const usersPath = path.join(__dirname, '../data/users.json');
 
 class User {
-    constructor(username, email, password, favorites = []) {
+    constructor(username, email, password, favorites = {}) {
         this.username = username;
         this.email = email;
         this.password = password;
-        this.favorites = favorites;
+        this.favorites = favorites; //structure: { imdbID: [{ name, url, description }] }
     }
 
     static async loadUsers() {
@@ -46,8 +46,7 @@ class User {
     static async isFavorite(imdbID, username) {
         const users = await User.loadUsers();
         const user = users[username];
-        if (!user.favorites) return false;
-        return user.favorites.includes(imdbID);
+        return Boolean(user && user.favorites[imdbID]);
     }
 
     static async addToFavorites(imdbID, username) {
@@ -55,24 +54,78 @@ class User {
         const user = users[username];
         if (!user) return null;
 
-        // Check if movie is already in favorites
-        if (!user.favorites.includes(imdbID)) {
-            user.favorites.push(imdbID);
+        if (!user.favorites[imdbID]) {
+            user.favorites[imdbID] = []; 
             await User.saveUsers(users);
             return "Added to favorites";
         }
 
         return "Already in favorites";
     }
+
     static async removeFromFavorites(imdbID, username) {
         const users = await User.loadUsers();
         const user = users[username];
 
-        if (!user || !user.favorites) return null;
+        if (!user || !user.favorites[imdbID]) return null;
 
-        user.favorites = user.favorites.filter(fav => fav !== imdbID);
+        delete user.favorites[imdbID];
         await User.saveUsers(users);
         return "Removed from favorites";
+    }
+
+    static async addLinkToMovie(imdbID, username, linkName, linkURL, linkDescription) {
+        const users = await User.loadUsers();
+        const user = users[username];
+        if (!user) return null;
+
+        if (!user.favorites[imdbID]) {
+            return "Movie is not in favorites";
+        }
+
+        const movieLinks = user.favorites[imdbID];
+        if (movieLinks.find(link => link.name === linkName && link.url === linkURL && link.description === linkDescription)) {
+            return "Link already exists";
+        }
+
+        movieLinks.push({ name: linkName, url: linkURL, description: linkDescription });
+        await User.saveUsers(users);
+        return "Link added";
+    }
+
+    static async removeLinkFromMovie(imdbID, username, index) {
+        const users = await User.loadUsers();
+        const user = users[username];
+        if (!user || !user.favorites[imdbID]) return null;
+        if (index < 0 || index >= user.favorites[imdbID].length) return null;
+        const movieLinks = user.favorites[imdbID];    
+        movieLinks.splice(index, 1);
+        await User.saveUsers(users);
+        return "Link removed";
+    }
+
+    static async getMovieLinks(imdbID, username) {
+        const users = await User.loadUsers();
+        const user = users[username];
+        if (!user || !user.favorites[imdbID]) return [];
+
+        return user.favorites[imdbID];
+    }
+
+    static async editLinkInMovie(imdbID, username, index, linkName, linkURL, linkDescription) {
+        const users = await User.loadUsers();
+        const user = users[username];
+        if (!user || !user.favorites[imdbID]) return "Movie is not in favorites";
+
+        const movieLinks = user.favorites[imdbID];
+
+        if (index === -1) {
+            return "Link not found";
+        }
+
+        movieLinks[index] = { name: linkName, url: linkURL, description: linkDescription };
+        await User.saveUsers(users);
+        return "Link edited";
     }
 }
 

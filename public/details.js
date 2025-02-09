@@ -14,7 +14,7 @@ class MovieAPI {
         return null;
       }
     } catch (error) {
-      console.error("Failed to fetch movie details:", error);
+      console.error("Failed to fetch movie details:", error.message);
       Swal.fire("Error", "Failed to fetch movie details. Please try again.", "error");
       return null;
     }
@@ -36,6 +36,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 });
 
+/**
+ * Render movie details on the page.
+ * @param {object} details - The movie details object.
+ */
 async function renderMovieDetails(details) {
   const detailsContainer = document.getElementById("movie-details");
 
@@ -97,41 +101,31 @@ async function renderMovieDetails(details) {
   }, 0);
 }
 
-
-
+/**
+ * Redirects the user to the main page.
+ */
 function goBack() {
   window.location.href = "/main";
 }
 
+/**
+ * Toggles the favorite status of a movie by sending a request to the server.
+ * Updates the button text and color based on the new status.
+ */
 async function toggleFavorite(imdbID, button) {
   try {
-    // Check if the movie is already in favorites
-    const responseCheck = await fetch(`/favorites/isFavorite?imdbID=${imdbID}`);
-    const resultCheck = await responseCheck.json();
-    const isFavorite = resultCheck.isFavorite;
-
-    // Choose the correct method based on the current state
-    const method = isFavorite ? "DELETE" : "POST";
-    const response = await fetch("/favorites", {
-      method: method,
+    const method = button.textContent.includes("Remove") ? "DELETE" : "POST";
+    
+    await fetchJSON("/favorites", {
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imdbID }),
+      body: JSON.stringify({ imdbID })
     });
-
-    if (!response.ok) {
-      if (response.status === 403) {
-        throw new Error("You need to log in to manage favorites.");
-      }
-      throw new Error(`Server responded with status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log("Server response:", result);
 
     // Update the button text and color
     button.textContent = method === "POST" ? "Remove from Favorites" : "Add to Favorites";
     button.style.backgroundColor = method === "POST" ? "#f44336" : "#4CAF50";
-    
+
     const movieDetails = await MovieAPI.fetchMoviesDetails(imdbID);
     await renderMovieDetails(movieDetails);
 
@@ -141,6 +135,14 @@ async function toggleFavorite(imdbID, button) {
   }
 }
 
+/**
+ * Asynchronously loads and displays a list of links for a given IMDb ID.
+ * Fetches the links from the server and populates the HTML element with ID 'links-list'.
+ * Each link includes an edit and remove button.
+ *
+ * @param {string} imdbID - The IMDb ID for which to load the links.
+ * @returns {Promise<void>} - A promise that resolves when the links have been loaded and displayed.
+ */
 async function loadLinks(imdbID) {
   try {
     const linksList = document.getElementById("links-list");
@@ -149,18 +151,8 @@ async function loadLinks(imdbID) {
       return;
     }
     linksList.innerHTML = '';
-
-    const response = await fetch(`/${imdbID}/links`);
-    if (!response.ok) {
-      throw new Error(`Error fetching links: ${response.status} ${response.statusText}`);
-    }
-
-    const storedLinks = await response.json();
-    if (!Array.isArray(storedLinks.links)) {
-      throw new Error("Invalid response format");
-    }
-
-    storedLinks.links.forEach((link, index) => {
+    const { links } = await fetchJSON(`/${imdbID}/links`);
+    links.forEach((link, index) => {
       const listItem = `
         <li>
           ${link.name}: <a href="${link.url}" target="_blank">${link.url}</a>
@@ -179,6 +171,15 @@ async function loadLinks(imdbID) {
 }
 
 
+/**
+ * Displays a SweetAlert2 modal to add a new link associated with a given IMDb ID.
+ * Prompts the user to enter the link name, URL, and description.
+ * Validates the input and sends a POST request to add the link to the server.
+ * Displays success or error messages based on the outcome of the request.
+ *
+ * @param {string} imdbID - The IMDb ID associated with the link to be added.
+ * @returns {Promise<void>} A promise that resolves when the link is added or the operation is cancelled.
+ */
 async function addLink(imdbID) {
   Swal.fire({
     title: "Add Link",
@@ -229,6 +230,16 @@ async function addLink(imdbID) {
   });
 }
 
+/**
+ * Edits a link associated with a given IMDb ID.
+ *
+ * This function fetches the current link data, displays a modal for editing,
+ * and updates the link on the server if the user confirms the changes.
+ *
+ * @param {string} imdbID - The IMDb ID associated with the link.
+ * @param {number} index - The index of the link to be edited.
+ * @returns {Promise<void>} - A promise that resolves when the link is edited.
+ */
 async function editLink(imdbID, index) {
   const response = await fetch(`/${imdbID}/links`);
   if (!response.ok) {
@@ -273,6 +284,14 @@ async function editLink(imdbID, index) {
   });
 }
 
+/**
+ * Prompts the user to confirm the removal of a link, and if confirmed,
+ * sends a DELETE request to remove the link from the server.
+ * 
+ * @param {string} imdbID - The IMDb ID of the item to which the link belongs.
+ * @param {number} index - The index of the link to be removed.
+ * @returns {Promise<void>} A promise that resolves when the link is removed and the links are reloaded.
+ */
 async function removeLink(imdbID, index) {
   Swal.fire({
     title: "Remove Link",
@@ -283,17 +302,11 @@ async function removeLink(imdbID, index) {
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
-        const response = await fetch(`/${imdbID}/links`, {
+        await fetchJSON(`/${imdbID}/links`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ index })
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          Swal.fire("Error", errorData.message || "Failed to remove link", "error");
-          return;
-        }
 
         Swal.fire("Success", "Link removed successfully", "success");
         await loadLinks(imdbID);
@@ -304,4 +317,27 @@ async function removeLink(imdbID, index) {
       }
     }
   });
+}
+
+/**
+ * Fetches JSON data from a given URL with optional fetch options.
+ *
+ * @param {string} url - The URL to fetch data from.
+ * @param {Object} [options={}] - Optional fetch options.
+ * @returns {Promise<Object>} - A promise that resolves to the JSON data.
+ * @throws {Error} - Throws an error if the fetch operation fails or the response is not ok.
+ */
+async function fetchJSON(url, options = {}) {
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `HTTP error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`Fetch error: ${error.message}`);
+    Swal.fire("Error", error.message, "error");
+    throw error; // Rethrow the error to handle it in specific cases
+  }
 }

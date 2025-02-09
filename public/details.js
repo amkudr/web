@@ -47,28 +47,29 @@ async function renderMovieDetails(details) {
   const storedLinks = details.links || [];
 
   detailsContainer.innerHTML = `
-    <div class="card" style="max-width: 800px; margin: auto; background-color: rgb(39, 34, 34); border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); color: white; position: relative;">
-      <div class="card-body">
-        <div class="d-flex">
-          <img src="${(details.Poster && details.Poster !== 'N/A') ? details.Poster : '/default-image.jpg'}" alt="${details.Title}" style="width: 150px; height: auto; margin-right: 20px; border-radius: 10px;">
-          <div>
-            <h2>${details.Title}</h2>
-            <p><strong>Released:</strong> ${details.Released}</p>
-            <p><strong>Genre:</strong> ${details.Genre}</p>
-            <p><strong>Director:</strong> ${details.Director}</p>
-            <p><strong>Actors:</strong> ${details.Actors}</p>
-            <p><strong>Plot:</strong> ${details.Plot}</p>
-            <p><strong>IMDb Rating:</strong> ${details.imdbRating}</p>
-            <div class="mt-3">
-              <a href="https://www.imdb.com/title/${details.imdbID}" target="_blank" class="btn btn-primary" style="background-color: rgb(255, 215, 0); border: none;">View on IMDb</a>
-              <button class="btn favorite-btn" 
-                data-imdbid="${details.imdbID}"
-                style="background-color: ${isFavorite ? '#f44336' : '#4CAF50'}; border: none; color: white;">
-                ${isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-              </button>
-            </div>
+  <div class="card" style="max-width: 800px; margin: auto; background-color: rgb(39, 34, 34); border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); color: white; position: relative;">
+    <div class="card-body">
+      <div class="d-flex">
+        <img src="${(details.Poster && details.Poster !== 'N/A') ? details.Poster : '/default-image.jpg'}" alt="${details.Title}" style="width: 150px; height: auto; margin-right: 20px; border-radius: 10px;">
+        <div>
+          <h2>${details.Title}</h2>
+          <p><strong>Released:</strong> ${details.Released}</p>
+          <p><strong>Genre:</strong> ${details.Genre}</p>
+          <p><strong>Director:</strong> ${details.Director}</p>
+          <p><strong>Actors:</strong> ${details.Actors}</p>
+          <p><strong>Plot:</strong> ${details.Plot}</p>
+          <p><strong>IMDb Rating:</strong> ${details.imdbRating}</p>
+          <div class="mt-3">
+            <a href="https://www.imdb.com/title/${details.imdbID}" target="_blank" class="btn btn-primary" style="background-color: rgb(255, 215, 0); border: none;">View on IMDb</a>
+            <button class="btn favorite-btn" 
+              data-imdbid="${details.imdbID}"
+              style="background-color: ${isFavorite ? '#f44336' : '#4CAF50'}; border: none; color: white;">
+              ${isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+            </button>
           </div>
         </div>
+      </div>
+      ${isFavorite ? `
         <div id="links-section" class="mt-4">
           <h5>Links</h5>
           <ul id="links-list">
@@ -83,10 +84,11 @@ async function renderMovieDetails(details) {
           </ul>
           <button class="btn btn-success mt-3" style="background-color: rgb(255, 215, 0); border: none;" onclick="addLink('${details.imdbID}')">Add Link</button>
         </div>
-      </div>
-      <button class="btn btn-secondary" onclick="goBack()" style="background-color: rgb(128, 128, 128); border: none; color: white; position: absolute; bottom: 10px; right: 10px;">&larr; Back</button>
+      ` : ''}
     </div>
-  `;
+    <button class="btn btn-secondary" onclick="goBack()" style="background-color: rgb(128, 128, 128); border: none; color: white; position: absolute; bottom: 10px; right: 10px;">&larr; Back</button>
+  </div>
+`;
   setTimeout(() => {
     document.querySelector(`.favorite-btn[data-imdbid="${details.imdbID}"]`)
       .addEventListener("click", function () {
@@ -129,6 +131,10 @@ async function toggleFavorite(imdbID, button) {
     // Update the button text and color
     button.textContent = method === "POST" ? "Remove from Favorites" : "Add to Favorites";
     button.style.backgroundColor = method === "POST" ? "#f44336" : "#4CAF50";
+    
+    const movieDetails = await MovieAPI.fetchMoviesDetails(imdbID);
+    await renderMovieDetails(movieDetails);
+
   } catch (error) {
     console.error("Error updating favorites:", error);
     Swal.fire("Error", error.message, "error");

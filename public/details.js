@@ -48,8 +48,6 @@ async function renderMovieDetails(details) {
   const response = await fetch(`/favorites/isFavorite?imdbID=${details.imdbID}`);
   const result = await response.json();
   isFavorite = result.isFavorite;
-  const storedLinks = details.links || [];
-
   detailsContainer.innerHTML = `
   <div class="card" style="max-width: 800px; margin: auto; background-color: rgb(39, 34, 34); border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); color: white; position: relative;">
     <div class="card-body">
@@ -77,14 +75,6 @@ async function renderMovieDetails(details) {
         <div id="links-section" class="mt-4">
           <h5>Links</h5>
           <ul id="links-list">
-            ${storedLinks.map((link, index) => `
-              <li>
-                ${link.name}: <a href="${link.url}" target="_blank" style="color: rgb(255, 215, 0);">${link.url}</a>
-                <div>${link.description}</div>
-                <button class="btn btn-warning btn-sm" onclick="editLink('${details.imdbID}', ${index})">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="removeLink('${details.imdbID}', ${index})">Remove</button>
-              </li>
-            `).join('')}
           </ul>
           <button class="btn btn-success mt-3" style="background-color: rgb(255, 215, 0); border: none;" onclick="addLink('${details.imdbID}')">Add Link</button>
         </div>
@@ -115,7 +105,7 @@ function goBack() {
 async function toggleFavorite(imdbID, button) {
   try {
     const method = button.textContent.includes("Remove") ? "DELETE" : "POST";
-    
+
     await fetchJSON("/favorites", {
       method,
       headers: { "Content-Type": "application/json" },
@@ -143,6 +133,7 @@ async function toggleFavorite(imdbID, button) {
  * @param {string} imdbID - The IMDb ID for which to load the links.
  * @returns {Promise<void>} - A promise that resolves when the links have been loaded and displayed.
  */
+
 async function loadLinks(imdbID) {
   try {
     const linksList = document.getElementById("links-list");
@@ -150,26 +141,46 @@ async function loadLinks(imdbID) {
       console.error("Error: Element with ID 'links-list' not found.");
       return;
     }
+    
+    // Clear the links list before loading new data
     linksList.innerHTML = '';
+
+    // Fetch private and public links
     const { links } = await fetchJSON(`/${imdbID}/links`);
-    links.forEach((link, index) => {
-      const listItem = `
-        <li>
-          ${link.name}: <a href="${link.url}" target="_blank">${link.url}</a>
-          <div>${link.description}</div>
-          <button class="btn btn-warning btn-sm" onclick="editLink('${imdbID}', '${index}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="removeLink('${imdbID}', '${index}')">Remove</button>
-        </li>
-      `;
-      linksList.insertAdjacentHTML('beforeend', listItem);
-    });
+    const { private: privateLinks, public: publicLinks } = links;
+
+    // Function to generate HTML for links list
+    function renderLinks(links, title) {
+      if (!links || links.length === 0) return ''; // Skip if no links available
+      const isPrivate = title === "Private Links";
+      let linksHTML = `<h5>${title}</h5><ul>`;
+      links.forEach((link, index) => {
+        linksHTML += `
+          <li>
+            ${link.name}: <a href="${link.url}" target="_blank">${link.url}</a>
+            <div>${link.description}</div>
+            <button class="btn btn-warning btn-sm" onclick="editLink('${imdbID}', '${index}', '${isPrivate}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="removeLink('${imdbID}', '${index}','${isPrivate}')">Remove</button>
+          </li>
+        `;
+      });
+      linksHTML += `</ul>`;
+      return linksHTML;
+    }
+
+    // Build the HTML content only for non-empty lists
+    let htmlContent = '';
+    htmlContent += renderLinks(privateLinks, "Private Links");
+    htmlContent += renderLinks(publicLinks, "Public Links");
+
+    // Insert the generated HTML into the container
+    linksList.innerHTML = htmlContent || '<li class="text-muted">No links available</li>';
 
   } catch (error) {
     console.error("Failed to load links:", error);
     document.getElementById("links-list").innerHTML = `<li class="text-danger">Error loading links</li>`;
   }
 }
-
 
 /**
  * Displays a SweetAlert2 modal to add a new link associated with a given IMDb ID.
@@ -187,6 +198,14 @@ async function addLink(imdbID) {
       <input type="text" id="link-name" class="form-control mb-2" placeholder="Link Name">
       <input type="text" id="link-url" class="form-control mb-2" placeholder="Link URL">
       <textarea id="link-description" class="form-control" placeholder="Link Description"></textarea>
+      <div class="mb-2">
+        <label class="me-2">Visibility:</label>
+        <input type="radio" name="link-visibility" id="private" value="private" checked>
+        <label for="private">Private</label>
+
+        <input type="radio" name="link-visibility" id="public" value="public" >
+        <label for="public" class="me-2">Public</label>      
+      </div>
     `,
     showCancelButton: true,
     confirmButtonText: "Add",
@@ -194,12 +213,13 @@ async function addLink(imdbID) {
       return {
         name: document.getElementById('link-name').value.trim(),
         url: document.getElementById('link-url').value.trim(),
-        description: document.getElementById('link-description').value.trim()
+        description: document.getElementById('link-description').value.trim(),
+        isPrivate: document.querySelector('input[name="link-visibility"]:checked')?.value === "private"
       };
     }
   }).then(async (result) => {
     if (result.isConfirmed) {
-      const { name, url, description } = result.value;
+      const { name, url, description, isPrivate } = result.value;
 
       if (!name || !url) {
         Swal.fire("Error", "Name and URL are required!", "error");
@@ -210,7 +230,7 @@ async function addLink(imdbID) {
         const response = await fetch("/favorites/links", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imdbID, name, url, description })
+          body: JSON.stringify({ imdbID, name, url, description, isPrivate })
         });
 
         if (!response.ok) {
@@ -240,20 +260,21 @@ async function addLink(imdbID) {
  * @param {number} index - The index of the link to be edited.
  * @returns {Promise<void>} - A promise that resolves when the link is edited.
  */
-async function editLink(imdbID, index) {
-  const response = await fetch(`/${imdbID}/links`);
-  if (!response.ok) {
-    Swal.fire("Error", "Failed to load links", "error");
-    return;
-  }
-  const link = (await response.json()).links[index];
-
+async function editLink(imdbID, index, wasPrivate) {
   Swal.fire({
     title: "Edit Link",
     html: `
-      <input type="text" id="link-name" class="form-control mb-2" placeholder="Link Name" value="${link.name}">
-      <input type="text" id="link-url" class="form-control mb-2" placeholder="Link URL" value="${link.url}">
-      <textarea id="link-description" class="form-control" placeholder="Link Description">${link.description}</textarea>
+      <input type="text" id="link-name" class="form-control mb-2" placeholder="Link Name">
+      <input type="text" id="link-url" class="form-control mb-2" placeholder="Link URL">
+      <textarea id="link-description" class="form-control" placeholder="Link Description"></textarea>
+      <div class="mb-2">
+        <label class="me-2">Visibility:</label>
+        <input type="radio" name="link-visibility" id="private" value="private" checked>
+        <label for="private">Private</label>
+
+        <input type="radio" name="link-visibility" id="public" value="public" >
+        <label for="public" class="me-2">Public</label>      
+      </div>
     `,
     showCancelButton: true,
     confirmButtonText: "Save",
@@ -261,17 +282,18 @@ async function editLink(imdbID, index) {
       return {
         name: document.getElementById('link-name').value,
         url: document.getElementById('link-url').value,
-        description: document.getElementById('link-description').value
+        description: document.getElementById('link-description').value,
+        isPrivate: document.querySelector('input[name="link-visibility"]:checked')?.value === "private"
       };
     }
   }).then(async (result) => {
     if (result.isConfirmed) {
-
-      const { name, url, description } = result.value;
+      wasPrivate = wasPrivate === "true";
+      const { name, url, description, isPrivate } = result.value;
       const response = await fetch(`/${imdbID}/links`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index, name, url, description })
+        body: JSON.stringify({ index, name, url, description, isPrivate, wasPrivate })
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -292,7 +314,7 @@ async function editLink(imdbID, index) {
  * @param {number} index - The index of the link to be removed.
  * @returns {Promise<void>} A promise that resolves when the link is removed and the links are reloaded.
  */
-async function removeLink(imdbID, index) {
+async function removeLink(imdbID, index, isPrivate) {
   Swal.fire({
     title: "Remove Link",
     text: "Are you sure you want to remove this link?",
@@ -301,11 +323,12 @@ async function removeLink(imdbID, index) {
     confirmButtonColor: "#f44336"
   }).then(async (result) => {
     if (result.isConfirmed) {
+      isPrivate = isPrivate === "true";
       try {
         await fetchJSON(`/${imdbID}/links`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ index })
+          body: JSON.stringify({ index, isPrivate })
         });
 
         Swal.fire("Success", "Link removed successfully", "success");

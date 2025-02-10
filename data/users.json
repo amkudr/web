@@ -4,14 +4,25 @@
     "email": "A@a",
     "password": "1",
     "favorites": {
-      "tt3766394": [
+      "tt9454892": [],
+      "tt0064418": [],
+      "tt2378794": [
         {
-          "name": "New",
-          "url": "NewUrl",
-          "description": "NewDesc"
+          "name": "gfg",
+          "url": "fgf",
+          "description": "1"
         }
       ],
-      "tt9454892": []
+      "tt14596212": [],
+      "tt0124315": [],
+      "tt0410297": [],
+      "tt3766394": [
+        {
+          "name": "wpub",
+          "url": "11",
+          "description": "423"
+        }
+      ]
     }
   },
   "AB": {
@@ -33,5 +44,13 @@
     "email": "a@1",
     "password": "3",
     "favorites": {}
+  },
+  "ac": {
+    "username": "ac",
+    "email": "a@1",
+    "password": "3",
+    "favorites": {
+      "tt3766394": []
+    }
   }
 }

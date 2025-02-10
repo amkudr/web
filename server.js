@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs/promises');
 const favoritesPath = path.join(__dirname, 'data', 'favorites.json');
 const User = require('./model/User');
+const PublicMovieLinks = require('./model/PublicMovieLinks');
 
 
 const app = express();
@@ -90,6 +91,7 @@ app.get('/details', (req, res) => {
   res.render('details', { user: req.session.user || null, details: null, isFavorite: false });
 });
 
+// return if the movie is favorited by the user
 app.get('/favorites/isFavorite', async (req, res) => {
   if (!req.session.user) {
       return res.json({ isFavorite: false });
@@ -102,7 +104,7 @@ app.get('/favorites/isFavorite', async (req, res) => {
   res.json({ isFavorite: isFav });
 });
 
-
+// add a movie to the user's favorites
 app.post('/favorites', async (req, res) => {
   if (!req.session.user) {
       return res.status(403).json({ message: "You need to log in to add favorites." });
@@ -115,7 +117,7 @@ app.post('/favorites', async (req, res) => {
   res.json({ message: result });
 });
 
-
+// remove a movie from the user's favorites
 app.delete('/favorites', async (req, res) => {
   if (!req.session.user) {
       return res.status(403).json({ message: "You need to log in to remove favorites." });
@@ -128,6 +130,8 @@ app.delete('/favorites', async (req, res) => {
   res.json({ message: result });
 });
 
+
+// get all the links for a movie
 app.get('/:movieID/links', async (req, res) => {
   try {
       if (!req.session.user) {
@@ -137,29 +141,35 @@ app.get('/:movieID/links', async (req, res) => {
       const { movieID } = req.params; 
       const username = req.session.user.username;
 
-      let links = await User.getMovieLinks(movieID, username);
+      let privateLinks = await User.getMovieLinks(movieID, username);
+      let publicLinks = await PublicMovieLinks.getLinks(movieID);
 
-      res.json({ links });
+      res.json({ links: { private: privateLinks, public: publicLinks } });
   } catch (error) {
       console.error("Error fetching links:", error);
       res.status(500).json({ message: "Internal server error" });
   }
 });
 
+// add a link to a movie
 app.post('/favorites/links', async (req, res) => {
   try {
       if (!req.session.user) {
           return res.status(403).json({ message: "You need to log in to add links." });
       }
 
-      const { imdbID, name, url, description } = req.body;
-      if (!imdbID || !name || !url) {
+      const { imdbID, name, url, description, isPrivate } = req.body;
+      if (!imdbID || !name || !url || isPrivate === undefined) {
           return res.status(400).json({ message: "Missing required fields." });
       }
-
-      const username = req.session.user.username;
-      const result = await User.addLinkToMovie(imdbID, username, name, url, description);
-
+      let result;
+      if (isPrivate){
+        const username = req.session.user.username;
+        result = await User.addLinkToMovie(imdbID, username, name, url, description);
+      }
+      else {
+        result = await PublicMovieLinks.addLink(imdbID, name, url, description);
+      }
       res.json({ message: result });
   } catch (error) {
       console.error("Error adding link:", error);
@@ -167,6 +177,8 @@ app.post('/favorites/links', async (req, res) => {
   }
 });
 
+
+// remove a link from a movie
 app.delete('/:movieID/links', async (req, res) => {
   try {
       if (!req.session.user) {
@@ -174,13 +186,19 @@ app.delete('/:movieID/links', async (req, res) => {
       }
 
       const { movieID } = req.params;
-      const { index } = req.body;
+      let { index, isPrivate } = req.body;
       if (index === undefined) {
         return res.status(400).json({ message: "Invalid or missing index." });
       }
+      let result;
 
-      const username = req.session.user.username;
-      const result = await User.removeLinkFromMovie(movieID, username, index);
+      if (isPrivate){       
+        const username = req.session.user.username;
+        result = await User.removeLinkFromMovie(movieID, username, index);
+      }
+      else {
+        result = await PublicMovieLinks.removeLink(movieID, index);
+      }
 
       if (result === null) {
         return res.status(404).json({ message: "Link not found or invalid index." });
@@ -194,6 +212,7 @@ app.delete('/:movieID/links', async (req, res) => {
   }
 });
 
+// edit a link for a movie
 app.put('/:movieID/links', async (req, res) => {
   try {
       if (!req.session.user) {
@@ -201,15 +220,42 @@ app.put('/:movieID/links', async (req, res) => {
       }
 
       const { movieID } = req.params;
-      const { index, name, url, description } = req.body;
-      if (index === undefined || !name || !url) {
+      const { index, name, url, description, isPrivate, wasPrivate } = req.body;
+      if (index === undefined || !name || !url || isPrivate === undefined) {
           return res.status(400).json({ message: "Missing required fields." });
       }
+      let result;
 
-      const username = req.session.user.username;
-      const result = await User.editLinkInMovie(movieID, username, index, name, url, description);
-
-      if (result === "Movie is not in favorites" || result === "Link not found") {
+      if (isPrivate === wasPrivate) { // If the link is private and stays private or public and stays public
+        if (isPrivate){
+        const username = req.session.user.username;
+        result = await User.editLinkInMovie(movieID, username, index, name, url, description);
+        }
+        else { // If the link is public 
+          result = await PublicMovieLinks.editLink(movieID, index, name, url, description
+          );
+      }
+    }
+      else { // If the link changes from private to public or vice versa
+        if (wasPrivate){
+          const username = req.session.user.username;
+          result = await User.removeLinkFromMovie(movieID, username, index);
+          if (result === "Link removed") {
+            result = await PublicMovieLinks.addLink(movieID, name, url, description);
+          }
+        }
+        else { 
+          result = await PublicMovieLinks.removeLink(movieID, index);
+          if (result === "Link removed") {
+            const username = req.session.user.username;
+            result = await User.addLinkToMovie(movieID, username, name, url, description);
+          }
+        }
+        if (result === null) {
+          return res.status(404).json({ message: "Link not found or invalid index." });
+      }
+    }
+    if (result === "Movie is not in favorites" || result === "Link not found") {
           return res.status(404).json({ message: result });
       }
 

@@ -5,5 +5,5 @@ User (MongoDB)
  *favorites: [imdbID]
 
 Links(SQL)
-LinkID(key) name url desc avgRating votes clics imdbID isPublic filmname username
+LinkID(key) name url desc avgRating votes clics imdbID isPrivate filmname creator
 

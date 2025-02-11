@@ -2,8 +2,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
-const fs = require('fs/promises');
-const favoritesPath = path.join(__dirname, 'data', 'favorites.json');
 const User = require('./model/User');
 const PublicMovieLinks = require('./model/PublicMovieLinks');
 
@@ -19,6 +17,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+const favoritesRoutes = require('./routes/favoritesRoutes');
 
 app.use(session({
   secret: 'your_secret_key',
@@ -26,6 +25,8 @@ app.use(session({
   saveUninitialized: true,
 }));
 
+// API Routes
+app.use('/favorites', favoritesRoutes);
 
 app.get('/', (req, res) => {
   res.render('login', { error: null });
@@ -69,7 +70,9 @@ app.post('/login', async (req, res) => {
       return res.render('login', { error: 'Invalid username or password.' });
     }
     req.session.user = user;
+    // res.json({ message: "Login successful", user });
     res.redirect('/main');
+
 });
 
 // Route to render the movie search page (main.ejs)
@@ -91,44 +94,44 @@ app.get('/details', (req, res) => {
   res.render('details', { user: req.session.user || null, details: null, isFavorite: false });
 });
 
-// return if the movie is favorited by the user
-app.get('/favorites/isFavorite', async (req, res) => {
-  if (!req.session.user) {
-      return res.json({ isFavorite: false });
-  }
+// // return if the movie is favorited by the user
+// app.get('/favorites/isFavorite', async (req, res) => {
+//   if (!req.session.user) {
+//       return res.json({ isFavorite: false });
+//   }
 
-  const { imdbID } = req.query;
-  const username = req.session.user.username;
+//   const { imdbID } = req.query;
+//   const username = req.session.user.username;
 
-  const isFav = await User.isFavorite(imdbID, username);
-  res.json({ isFavorite: isFav });
-});
+//   const isFav = await User.isFavorite(imdbID, username);
+//   res.json({ isFavorite: isFav });
+// });
 
-// add a movie to the user's favorites
-app.post('/favorites', async (req, res) => {
-  if (!req.session.user) {
-      return res.status(403).json({ message: "You need to log in to add favorites." });
-  }
+// // add a movie to the user's favorites
+// app.post('/favorites', async (req, res) => {
+//   if (!req.session.user) {
+//       return res.status(403).json({ message: "You need to log in to add favorites." });
+//   }
 
-  const { imdbID } = req.body;
-  const username = req.session.user.username;
+//   const { imdbID } = req.body;
+//   const username = req.session.user.username;
 
-  const result = await User.addToFavorites(imdbID, username);
-  res.json({ message: result });
-});
+//   const result = await User.addToFavorites(imdbID, username);
+//   res.json({ message: result });
+// });
 
-// remove a movie from the user's favorites
-app.delete('/favorites', async (req, res) => {
-  if (!req.session.user) {
-      return res.status(403).json({ message: "You need to log in to remove favorites." });
-  }
+// // remove a movie from the user's favorites
+// app.delete('/favorites', async (req, res) => {
+//   if (!req.session.user) {
+//       return res.status(403).json({ message: "You need to log in to remove favorites." });
+//   }
 
-  const { imdbID } = req.body;
-  const username = req.session.user.username;
+//   const { imdbID } = req.body;
+//   const username = req.session.user.username;
 
-  const result = await User.removeFromFavorites(imdbID, username);
-  res.json({ message: result });
-});
+//   const result = await User.removeFromFavorites(imdbID, username);
+//   res.json({ message: result });
+// });
 
 
 // get all the links for a movie

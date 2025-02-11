@@ -133,6 +133,15 @@ app.get('/details', (req, res) => {
 //   res.json({ message: result });
 // });
 
+app.get('/myFavorites', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  res.render('favorites', { 
+    user: req.session.user, 
+    favorites: req.session.user.favorites || {} 
+  });
+});
 
 // get all the links for a movie
 app.get('/:movieID/links', async (req, res) => {

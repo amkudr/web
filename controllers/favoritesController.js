@@ -2,40 +2,80 @@ const User = require('../model/User');
 const Link = require('../model/Links');
 
 exports.isFavorite = async (req, res) => {
-    const { imdbID } = req.query;
-    const username = req.session.user.username;
-    const isFav = await User.isFavorite(imdbID, username);
-    res.json({ isFavorite: isFav });
+    try {
+        const { imdbID } = req.query;
+        const username = req.session.user.username;
+
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const isFav = user.favorites.includes(imdbID);
+        res.json({ isFavorite: isFav });
+    } catch (error) {
+        console.error("Error checking favorite:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
 };
 
 exports.addToFavorites = async (req, res) => {
-    const { imdbID } = req.body;
-    const username = req.session.user.username;
-    const result = await User.addToFavorites(imdbID, username);
-    res.json({ message: result });
+    try {
+        const { imdbID } = req.body;
+        const username = req.session.user.username;
+
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (!user.favorites.includes(imdbID)) {
+            user.favorites.push(imdbID);
+            await user.save();
+        }
+
+        res.json({ message: "Added to favorites", favorites: user.favorites });
+    } catch (error) {
+        console.error("Error adding to favorites:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
 };
 
 exports.removeFromFavorites = async (req, res) => {
-    const { imdbID } = req.body;
-    const username = req.session.user.username;
-    await Link.removeLinkByImdbID(imdbID, username);
-    const result = await User.removeFromFavorites(imdbID, username);
-    res.json({ message: result });
+    try {
+        const { imdbID } = req.body;
+        const username = req.session.user.username;
+
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Delete Links TODO
+        // await Link.deleteMany({ imdbID, username });
+
+        user.favorites = user.favorites.filter(id => id !== imdbID);
+        await user.save();
+
+        res.json({ message: "Removed from favorites", favorites: user.favorites });
+    } catch (error) {
+        console.error("Error removing from favorites:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
 };
 
 exports.getFavorites = async (req, res) => {
-    // const username = req.session.user.username;
-    // const favorites = await User.getFavorites(username);
-    // res.json({ favorites });
-    res.json({
-        favorites: ["tt14596212", "tt0124315", "tt0410297"]
-    });
+    try {
+        const username = req.session.user.username;
+        const user = await User.findOne({ username });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.json({ favorites: user.favorites });
+    } catch (error) {
+        console.error("Error getting favorites:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
 };
-
-
-// exports.getFavorites = async (req, res) => {
-//     const username = req.session.user.username;
-//     const user = await User.loadUsers();
-//     const favorites = user[username].favorites;
-//     res.json({ favorites });
-// }

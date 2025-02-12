@@ -99,7 +99,7 @@
     // Function to build and display enriched movie cards
     async function loadFavorites() {
       container.innerHTML = ""; // Clear any loading message
-      const imdbIDs = Object.keys(favorites);
+      const imdbIDs = favorites;
       
       if (imdbIDs.length === 0) {
         container.innerHTML = "<p class='text-center'>You have no favorite movies yet.</p>";

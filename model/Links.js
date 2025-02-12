@@ -65,3 +65,5 @@ class Links {
         };
     }
 }
+
+module.exports = Links;

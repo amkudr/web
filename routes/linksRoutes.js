@@ -1,5 +1,5 @@
 const express = require('express');
-const { getMovieLinks, addLink, removeLink, editLink } = require('../controllers/linksController');
+const { getMovieLinks, addLink, removeLink, editLink, rateLink, clickLink } = require('../controllers/linksController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 const router = express.Router();

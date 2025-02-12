@@ -18,6 +18,7 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 const favoritesRoutes = require('./routes/favoritesRoutes');
+const linksRoutes = require('./routes/linksRoutes');
 
 app.use(session({
   secret: 'your_secret_key',
@@ -27,6 +28,8 @@ app.use(session({
 
 // API Routes
 app.use('/favorites', favoritesRoutes);
+app.use('/links', linksRoutes);
+
 
 app.get('/', (req, res) => {
   res.render('login', { error: null });
@@ -133,6 +136,15 @@ app.get('/details', (req, res) => {
 //   res.json({ message: result });
 // });
 
+app.get('/myFavorites', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  res.render('favorites', { 
+    user: req.session.user, 
+    favorites: req.session.user.favorites || {} 
+  });
+});
 
 // get all the links for a movie
 app.get('/:movieID/links', async (req, res) => {

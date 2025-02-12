@@ -1,5 +1,5 @@
 const API_KEY = "13a68afd";
-const BASE_URL = "http://www.omdbapi.com/";
+const BASE_URL = "https://www.omdbapi.com/";
 
 class MovieAPI {
   static async fetchMoviesDetails(imdbID) {

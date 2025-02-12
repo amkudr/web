@@ -7,6 +7,6 @@ const router = express.Router();
 router.get('/isFavorite', authMiddleware, isFavorite);
 router.post('/', authMiddleware, addToFavorites);
 router.delete('/', authMiddleware, removeFromFavorites);
-router.get('/', authMiddleware, getFavorites); // TODO
+router.get('/', authMiddleware, getFavorites); 
 
 module.exports = router;

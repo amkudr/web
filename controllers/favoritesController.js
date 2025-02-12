@@ -1,4 +1,5 @@
 const User = require('../model/User');
+const Link = require('../model/Links');
 
 exports.isFavorite = async (req, res) => {
     const { imdbID } = req.query;
@@ -17,11 +18,15 @@ exports.addToFavorites = async (req, res) => {
 exports.removeFromFavorites = async (req, res) => {
     const { imdbID } = req.body;
     const username = req.session.user.username;
+    await Link.removeLinkByImdbID(imdbID, username);
     const result = await User.removeFromFavorites(imdbID, username);
     res.json({ message: result });
 };
 
 exports.getFavorites = async (req, res) => {
+    // const username = req.session.user.username;
+    // const favorites = await User.getFavorites(username);
+    // res.json({ favorites });
     res.json({
         favorites: ["tt14596212", "tt0124315", "tt0410297"]
     });

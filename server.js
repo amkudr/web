@@ -18,6 +18,7 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 const favoritesRoutes = require('./routes/favoritesRoutes');
+const linksRoutes = require('./routes/linksRoutes');
 
 app.use(session({
   secret: 'your_secret_key',
@@ -27,6 +28,8 @@ app.use(session({
 
 // API Routes
 app.use('/favorites', favoritesRoutes);
+app.use('/links', linksRoutes);
+
 
 app.get('/', (req, res) => {
   res.render('login', { error: null });

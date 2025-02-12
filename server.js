@@ -6,6 +6,7 @@ const User = require('./model/User');
 const PublicMovieLinks = require('./model/PublicMovieLinks');
 
 
+
 const app = express();
 const port = 3000;
 
@@ -19,6 +20,8 @@ app.use(express.static('public'));
 
 const favoritesRoutes = require('./routes/favoritesRoutes');
 const linksRoutes = require('./routes/linksRoutes');
+const usersRoutes = require('./routes/usersRoutes');
+
 
 app.use(session({
   secret: 'your_secret_key',
@@ -29,6 +32,7 @@ app.use(session({
 // API Routes
 app.use('/favorites', favoritesRoutes);
 app.use('/links', linksRoutes);
+app.use('/', usersRoutes);
 
 
 app.get('/', (req, res) => {
@@ -37,45 +41,6 @@ app.get('/', (req, res) => {
 
 app.get('/register', (req, res) => {
   res.render('register', { error: null, user: req.session.user || null });
-});
-
-// POST route for registration
-app.post('/register', async (req, res) => {
-  const { username, email, password, confirmPassword } = req.body;
-
-  // Basic validation
-  if (!username || !email || !password || !confirmPassword) {
-    return res.status(400).render('register', { error: 'All fields are required.' });
-  }
-  if (password !== confirmPassword) {
-    return res.status(400).render('register', { error: 'Passwords do not match.' });
-  }
-
-  try {
-    const user = await User.register(username, email, password);
-    if (!user) {
-      return res.status(400).render('register', { error: 'Username already exists.' });
-    }
-      User.register(username, email, password);
-      req.session.user = { username, email };
-      res.redirect('/main');
-  } catch (error) {
-    console.error('Error registering user:', error);
-    res.status(500).render('register', { error: 'Internal Server Error.' });
-  }
-});
-
-
-app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    const user = await User.login(username, password);
-    if (!user) {
-      return res.render('login', { error: 'Invalid username or password.' });
-    }
-    req.session.user = user;
-    // res.json({ message: "Login successful", user });
-    res.redirect('/main');
-
 });
 
 // Route to render the movie search page (main.ejs)
@@ -281,52 +246,3 @@ app.put('/:movieID/links', async (req, res) => {
       res.status(500).json({ message: "Internal server error" });
   }
 });
-
-
-
-// app.post('/favorites', async (req, res) => {
-//   // Check if the user is logged in
-//   if (!req.session.user) {
-//     return res.status(403).json({ message: "You need to log in to add favorites." });
-//   }
-  
-//   const { imdbID, title, poster, year } = req.body;
-  
-//   try {
-//     // Read the favorites file; if it doesn't exist, use an empty array
-//     let favorites = [];
-//     try {
-//       const data = await fs.readFile(favoritesPath, 'utf-8');
-//       favorites = JSON.parse(data);
-//     } catch (err) {
-//       favorites = [];
-//     }
-    
-//     // Check if this movie is already favorited by this user
-//     const userIdentifier = req.session.user.username; 
-//     const existingIndex = favorites.findIndex(fav =>
-//       fav.user === userIdentifier && fav.imdbID === imdbID
-//     );
-    
-//     let message = "";
-//     if (existingIndex >= 0) {
-//       // If found, remove the favorite
-//       favorites.splice(existingIndex, 1);
-//       message = "Removed from favorites";
-//     } else {
-      
-//       favorites.push({ user: userIdentifier, imdbID, title, poster, year });
-//       message = "Added to favorites";
-//     }
-    
-//     // Write the updated favorites array back to the file
-//     await fs.writeFile(favoritesPath, JSON.stringify(favorites, null, 2));
-    
-//     return res.json({ message });
-//   } catch (error) {
-//     console.error("Error updating favorites:", error);
-//     return res.status(500).json({ message: "Internal Server Error." });
-//   }
-// });
-
-

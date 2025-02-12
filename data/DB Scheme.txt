@@ -1,0 +1,9 @@
+User (MongoDB)
+ *username
+ *email
+ *password
+ *favorites: [imdbID]
+
+Links(SQL)
+LinkID(key) name url desc avgRating votes clics imdbID isPrivate filmname creator
+

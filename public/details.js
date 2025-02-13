@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   if (movieDetails) {
     await renderMovieDetails(movieDetails);
     await loadLinks(imdbID);
+    loadReviews();
   }
 });
 
@@ -157,6 +158,7 @@ async function loadLinks(imdbID) {
         const votes = link.votes || 0;
     
         linksHTML += `
+
           <li class="list-group-item d-flex justify-content-between align-items-center" data-link-id="${link.linkID}">
             <div>
               <strong>${link.name}</strong>: 
@@ -177,6 +179,7 @@ async function loadLinks(imdbID) {
               <button class="btn btn-warning btn-sm" onclick="editLink('${link.linkID}', '${link.imdbID}')">Edit</button>
               <button class="btn btn-danger btn-sm" onclick="removeLink('${link.linkID}','${link.imdbID}')">Remove</button>
             </div>
+
           </li>
         `;
       });
@@ -396,6 +399,71 @@ async function removeLink(linkID, imdbID) {
     }
   });
 }
+
+// Reviews Section: Load reviews from localStorage
+function loadReviews() {
+  const reviewsKey = 'reviews_' + imdbID;
+  const reviews = JSON.parse(localStorage.getItem(reviewsKey) || '[]');
+  const reviewsList = document.getElementById("reviews-list");
+  reviewsList.innerHTML = "";
+  
+  if (reviews.length === 0) {
+    reviewsList.innerHTML = "<div class='col-12 text-center'><p>No reviews yet.</p></div>";
+  } else {
+    reviews.forEach((review, index) => {
+      // Create a column for each review card
+      const colDiv = document.createElement("div");
+      colDiv.className = "col-12 col-md-6";
+      
+      // Create the review card
+      const card = document.createElement("div");
+      card.className = "review-card";
+      card.innerHTML = `
+        <div class="review-username">Reviewed by: ${review.username}</div>
+        <div class="review-rating">Rating: ${review.rating} / 5</div>
+        <div class="review-text">${review.text}</div>
+        <button class="btn btn-danger btn-sm delete-review-btn" onclick="deleteReview(${index})">Delete</button>
+      `;
+      colDiv.appendChild(card);
+      reviewsList.appendChild(colDiv);
+    });
+  }
+}
+
+function addReview() {
+  const reviewText = document.getElementById("review-text").value;
+  const reviewRating = document.getElementById("review-rating").value;
+  
+  if (!reviewText || !reviewRating) {
+    alert("Please provide both a review and a rating.");
+    return;
+  }
+  
+  const reviewsKey = 'reviews_' + imdbID;
+  let reviews = JSON.parse(localStorage.getItem(reviewsKey) || '[]');
+  
+  // Include currentUser in the review object
+  reviews.push({ username: currentUser, text: reviewText, rating: reviewRating });
+  localStorage.setItem(reviewsKey, JSON.stringify(reviews));
+  
+  // Clear the form fields
+  document.getElementById("review-text").value = "";
+  document.getElementById("review-rating").value = "";
+  
+  loadReviews();
+}
+
+
+function deleteReview(index) {
+  const reviewsKey = 'reviews_' + imdbID;
+  let reviews = JSON.parse(localStorage.getItem(reviewsKey) || '[]');
+  reviews.splice(index, 1);
+  localStorage.setItem(reviewsKey, JSON.stringify(reviews));
+  
+  loadReviews();
+}
+
+
 
 /**
  * Fetches JSON data from a given URL with optional fetch options.

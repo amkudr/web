@@ -77,7 +77,7 @@ async function renderMovieDetails(details) {
           <h5>Links</h5>
           <ul id="links-list">
           </ul>
-          <button class="btn btn-success mt-3" style="background-color: rgb(255, 215, 0); border: none;" onclick="addLink('${details.imdbID}')">Add Link</button>
+          <button class="btn btn-success mt-3" style="background-color: rgb(255, 215, 0); border: none;" onclick="addLink('${details.imdbID}', '${details.Title}')">Add Link</button>
         </div>
       ` : ''}
     </div>
@@ -116,10 +116,7 @@ async function toggleFavorite(imdbID, button) {
     // Update the button text and color
     button.textContent = method === "POST" ? "Remove from Favorites" : "Add to Favorites";
     button.style.backgroundColor = method === "POST" ? "#f44336" : "#4CAF50";
-
-    const movieDetails = await MovieAPI.fetchMoviesDetails(imdbID);
-    await renderMovieDetails(movieDetails);
-
+    
   } catch (error) {
     console.error("Error updating favorites:", error);
     Swal.fire("Error", error.message, "error");
@@ -147,25 +144,46 @@ async function loadLinks(imdbID) {
     linksList.innerHTML = '';
 
     // Fetch private and public links
-    const { links } = await fetchJSON(`/${imdbID}/links`);
-    const { private: privateLinks, public: publicLinks } = links;
+    const { links } = await fetchJSON(`/links/${imdbID}`);
+    const privateLinks = links.filter(link => link.isPrivate);
+    const publicLinks = links.filter(link => !link.isPrivate);
 
     // Function to generate HTML for links list
     function renderLinks(links, title) {
       if (!links || links.length === 0) return ''; // Skip if no links available
-      const isPrivate = title === "Private Links";
-      let linksHTML = `<h5>${title}</h5><ul>`;
-      links.forEach((link, index) => {
+      let linksHTML = `<h5>${title}</h5><ul class="list-group">`;
+
+      links.forEach((link) => {
+        const avgRating = link.avgRating !== null ? link.avgRating.toFixed(1) : "N/A";
+        const votes = link.votes || 0;
+    
         linksHTML += `
-          <li>
-            ${link.name}: <a href="${link.url}" target="_blank">${link.url}</a>
-            <div>${link.description}</div>
-            
-            <button class="btn btn-warning btn-sm" onclick="editLink('${imdbID}', '${index}', '${isPrivate}')">Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="removeLink('${imdbID}', '${index}','${isPrivate}')">Remove</button>
+
+          <li class="list-group-item d-flex justify-content-between align-items-center" data-link-id="${link.linkID}">
+            <div>
+              <strong>${link.name}</strong>: 
+              <a href="${link.url}" target="_blank" rel="noopener noreferrer" onclick="handleLinkClick(event,${link.linkID}, '${link.url}', '${link.imdbID}')" class="link-primary">${link.url}</a>
+              <div class="text-muted">${link.description}</div>
+            </div>
+    
+            <div class="d-flex flex-column align-items-center">
+              <span class="badge bg-info text-dark">Rating: ${avgRating} (${votes} votes)</span>
+              <div class="rating-buttons">
+                ${[1, 2, 3, 4, 5].map(rating => `
+                  <button class="btn btn-sm btn-outline-primary" onclick="rateLink(${link.linkID}, ${rating}, '${link.imdbID}')">${rating} ⭐</button>
+                `).join('')}
+              </div>
+            </div>
+    
+            <div>
+              <button class="btn btn-warning btn-sm" onclick="editLink('${link.linkID}', '${link.imdbID}')">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="removeLink('${link.linkID}','${link.imdbID}')">Remove</button>
+            </div>
+
           </li>
         `;
       });
+    
       linksHTML += `</ul>`;
       return linksHTML;
     }
@@ -184,16 +202,48 @@ async function loadLinks(imdbID) {
   }
 }
 
+async function rateLink(linkID, rating, imdbID) {
+  try {
+    const response = await fetch(`/links/rate/${linkID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating })
+    });
+
+    if (!response.ok) throw new Error("Failed to vote");
+
+    Swal.fire("Success", `You rated this link ${rating} stars!`, "success");
+    await loadLinks(imdbID);
+  } catch (error) {
+    console.error("Error voting for link:", error);
+    Swal.fire("Error", "Could not submit vote", "error");
+  }
+}
+
+async function handleLinkClick(event, linkID, url) {
+  try {
+    event.preventDefault();
+
+    await fetch(`/links/click/${linkID}`, { method: "PUT" });
+    window.open(url, "_blank", "noopener noreferrer");
+
+  } catch (error) {
+    console.error("Error tracking click:", error);
+  }
+}
+
+
 /**
  * Displays a SweetAlert2 modal to add a new link associated with a given IMDb ID.
  * Prompts the user to enter the link name, URL, and description.
  * Validates the input and sends a POST request to add the link to the server.
  * Displays success or error messages based on the outcome of the request.
  *
- * @param {string} imdbID - The IMDb ID associated with the link to be added.
+ * @param {string} imdbID - The IMDb ID associated with the film to be added.
+ * @param {string} filmname - The name of the film to be added
  * @returns {Promise<void>} A promise that resolves when the link is added or the operation is cancelled.
  */
-async function addLink(imdbID) {
+async function addLink(imdbID, filmname) {
   Swal.fire({
     title: "Add Link",
     html: `
@@ -212,12 +262,17 @@ async function addLink(imdbID) {
     showCancelButton: true,
     confirmButtonText: "Add",
     preConfirm: () => {
-      return {
-        name: document.getElementById('link-name').value.trim(),
-        url: document.getElementById('link-url').value.trim(),
-        description: document.getElementById('link-description').value.trim(),
-        isPrivate: document.querySelector('input[name="link-visibility"]:checked')?.value === "private"
-      };
+      const name = document.getElementById('link-name').value.trim();
+      const url = document.getElementById('link-url').value.trim();
+      const description = document.getElementById('link-description').value.trim();
+      const visibility = document.querySelector('input[name="link-visibility"]:checked')?.value;
+    
+      if (!name || !url || !description) {
+        Swal.showValidationMessage("All fields (Name, URL, and Description) are required!");
+        return false;
+      }
+    
+      return { name, url, description, isPrivate: visibility === "private" };
     }
   }).then(async (result) => {
     if (result.isConfirmed) {
@@ -229,10 +284,10 @@ async function addLink(imdbID) {
       }
 
       try {
-        const response = await fetch("/favorites/links", {
+        const response = await fetch("/links", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imdbID, name, url, description, isPrivate })
+          body: JSON.stringify({ imdbID, filmname, name, url, description, isPrivate })
         });
 
         if (!response.ok) {
@@ -259,10 +314,9 @@ async function addLink(imdbID) {
  * and updates the link on the server if the user confirms the changes.
  *
  * @param {string} imdbID - The IMDb ID associated with the link.
- * @param {number} index - The index of the link to be edited.
  * @returns {Promise<void>} - A promise that resolves when the link is edited.
  */
-async function editLink(imdbID, index, wasPrivate) {
+async function editLink(linkID, imdbID) {
   Swal.fire({
     title: "Edit Link",
     html: `
@@ -281,21 +335,26 @@ async function editLink(imdbID, index, wasPrivate) {
     showCancelButton: true,
     confirmButtonText: "Save",
     preConfirm: () => {
-      return {
-        name: document.getElementById('link-name').value,
-        url: document.getElementById('link-url').value,
-        description: document.getElementById('link-description').value,
-        isPrivate: document.querySelector('input[name="link-visibility"]:checked')?.value === "private"
-      };
+      const name = document.getElementById('link-name').value.trim();
+      const url = document.getElementById('link-url').value.trim();
+      const description = document.getElementById('link-description').value.trim();
+      const visibility = document.querySelector('input[name="link-visibility"]:checked')?.value;
+    
+      if (!name || !url || !description) {
+        Swal.showValidationMessage("All fields (Name, URL, and Description) are required!");
+        return false;
+      }
+    
+      return { name, url, description, isPrivate: visibility === "private" };
     }
   }).then(async (result) => {
     if (result.isConfirmed) {
-      wasPrivate = wasPrivate === "true";
+     
       const { name, url, description, isPrivate } = result.value;
-      const response = await fetch(`/${imdbID}/links`, {
+      const response = await fetch(`/links/${linkID}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ index, name, url, description, isPrivate, wasPrivate })
+        body: JSON.stringify({ name, url, description, isPrivate })
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -312,11 +371,10 @@ async function editLink(imdbID, index, wasPrivate) {
  * Prompts the user to confirm the removal of a link, and if confirmed,
  * sends a DELETE request to remove the link from the server.
  * 
- * @param {string} imdbID - The IMDb ID of the item to which the link belongs.
- * @param {number} index - The index of the link to be removed.
+ * @param {string} linkID -  The ID of the link to be removed.
  * @returns {Promise<void>} A promise that resolves when the link is removed and the links are reloaded.
  */
-async function removeLink(imdbID, index, isPrivate) {
+async function removeLink(linkID, imdbID) {
   Swal.fire({
     title: "Remove Link",
     text: "Are you sure you want to remove this link?",
@@ -325,12 +383,10 @@ async function removeLink(imdbID, index, isPrivate) {
     confirmButtonColor: "#f44336"
   }).then(async (result) => {
     if (result.isConfirmed) {
-      isPrivate = isPrivate === "true";
       try {
-        await fetchJSON(`/${imdbID}/links`, {
+        await fetchJSON(`/links/${linkID}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ index, isPrivate })
         });
 
         Swal.fire("Success", "Link removed successfully", "success");
@@ -421,13 +477,20 @@ async function fetchJSON(url, options = {}) {
   try {
     const response = await fetch(url, options);
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `HTTP error: ${response.status}`);
+      let errorMessage = `HTTP error: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (jsonError) {
+        console.warn("Response is not JSON, falling back to status text.");
+      }
+      throw new Error(errorMessage);
     }
     return await response.json();
   } catch (error) {
     console.error(`Fetch error: ${error.message}`);
     Swal.fire("Error", error.message, "error");
-    throw error; // Rethrow the error to handle it in specific cases
+    throw error;
   }
 }
+

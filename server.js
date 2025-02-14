@@ -87,6 +87,23 @@ app.get('/myFavorites', async (req, res) => {
   }
 });
 
+app.get('/topFilms', async (req, res) => {
+  try {
+    const response = await fetch(`http://localhost:3000/links/public`, {
+      method: "GET",
+      headers: { "Cookie": req.headers.cookie }
+    });
+
+    const data = await response.json();
+
+    res.render('topFilms', { films: data.links, user: req.session.user});
+  }
+  catch (error) {
+    console.error("Error rendering topFilms page:", error);
+    res.render('topFilms', { films: [], user: req.session.user });
+  }
+});
+
 
 
 

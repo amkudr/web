@@ -21,9 +21,7 @@ exports.getMovieLinks = async (req, res) => {
 
 exports.getPublicMovieLinks = async (req, res) => {
     try {
-        console.log("getPublicMovieLinks1");
         const links = await Links.getPublicMovieLinks();
-        console.log(links);
         res.json({ links });
     } catch (error) {
         console.error("Error fetching links:", error);

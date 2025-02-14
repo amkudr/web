@@ -39,7 +39,6 @@ class Links {
      * @returns all public links
      */
     static async getPublicMovieLinks() {
-        console.log("getPublicMovieLinks");
         return new Promise((resolve, reject) => {
             linkDB.all(
                 "SELECT * FROM Links WHERE isPrivate = 0",

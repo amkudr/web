@@ -93,16 +93,25 @@ app.get('/topFilms', async (req, res) => {
       method: "GET",
       headers: { "Cookie": req.headers.cookie }
     });
-
     const data = await response.json();
+    let films = data.links;
 
-    res.render('topFilms', { films: data.links, user: req.session.user});
-  }
-  catch (error) {
+    const OMDbAPIKey = '13a68afd';
+    for (let film of films) {
+      const omdbResponse = await fetch(`http://www.omdbapi.com/?i=${film.imdbID}&apikey=${OMDbAPIKey}`);
+      const omdbData = await omdbResponse.json();
+      film.Poster = (omdbData.Response === 'True' && omdbData.Poster && omdbData.Poster !== 'N/A')
+        ? omdbData.Poster
+        : null;
+    }
+
+    res.render('topFilms', { films: films, user: req.session.user });
+  } catch (error) {
     console.error("Error rendering topFilms page:", error);
     res.render('topFilms', { films: [], user: req.session.user });
   }
 });
+
 
 app.get('/admin', async (req, res) => {
   

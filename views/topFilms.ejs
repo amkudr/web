@@ -1,32 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Top Films - My Movies</title>
   <!-- Bootstrap CSS from CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
     style-src 'self' 'unsafe-inline';
-    img-src 'self' https://m.media-amazon.com;
-  ">
+    connect-src 'self';
+    img-src 'self' https://m.media-amazon.com https://via.placeholder.com;
+  " />
   <style>
     body {
       background-color: #121212;
       color: #fff;
       font-family: Arial, sans-serif;
     }
-    .navbar { background-color: #1f1f1f; }
-    .navbar-brand, .nav-link, .navbar-text { color: #00ff00 !important; }
+    .navbar {
+      background-color: #1f1f1f;
+    }
+    .navbar-brand,
+    .nav-link,
+    .navbar-text {
+      color: #00ff00 !important;
+    }
     .film-card {
       background-color: #1f1f1f;
       border-radius: 8px;
       padding: 20px;
       margin-bottom: 20px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
       display: flex;
       align-items: center;
     }
@@ -36,7 +43,9 @@
       border-radius: 10px;
       margin-right: 20px;
     }
-    .back-btn { margin-top: 20px; }
+    .back-btn {
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
@@ -51,29 +60,35 @@
           <% } else { %>
             <span class="navbar-text me-3">Not logged in</span>
           <% } %>
-          <a href="/logout" class="nav-link btn" style="background-color: rgb(214, 36, 78); color: white;">Logout</a>
+          <a href="/logout" class="nav-link btn" style="background-color: rgb(214,36,78); color: white;">Logout</a>
         </div>
       </div>
     </div>
   </nav>
-  
-  <!-- Main Content -->
+
+  <!-- Sorting Buttons -->
+  <div class="container mt-4 text-center mb-4">
+    <button class="btn btn-success" id="sort-rating">Sort by Rating</button>
+    <button class="btn btn-info" id="sort-clicks">Sort by Clicks</button>
+  </div>
+
+  <!-- Main Content Container -->
   <div class="container mt-4">
     <h1 class="text-center">Top Films</h1>
-    <div class="text-center mb-4">
-      <button class="btn btn-success" id="sort-rating">Sort by Rating</button>
-      <button class="btn btn-info" id="sort-clicks">Sort by Clicks</button>
-    </div>
     <div id="films-container">
       <% if (films && films.length > 0) { %>
         <% films.forEach(function(film) { %>
           <div class="film-card">
-            <img src="<%= film.Poster !== 'N/A' ? film.Poster : '/default-image.jpg' %>" alt="<%= film.filmname %>">
+            <% if (film.Poster) { %>
+              <img src="<%= film.Poster %>" alt="<%= film.filmname %>" style="width:150px; height:auto; margin-right:20px; border-radius:10px;">
+            <% } else { %>
+              <p>No poster available</p>
+            <% } %>
             <div>
               <h3><%= film.filmname %></h3>
               <p><strong>IMDb ID:</strong> <%= film.imdbID %></p>
               <p><strong>Avg Rating:</strong> <%= film.avgRating %> (<%= film.votes %> votes)</p>
-              <p><strong>Clicks:</strong> <%= film.clicks %></p>
+              <p><strong>Clicks:</strong> <%= film.clics %></p>
               <p><strong>Creator:</strong> <%= film.creator %></p>
               <a href="/details?imdbID=<%= film.imdbID %>" class="btn btn-primary" style="background-color: rgb(255,215,0); border: none;">View Details</a>
             </div>
@@ -83,28 +98,38 @@
         <p class="text-center">No films available.</p>
       <% } %>
     </div>
-    
+
     <!-- Back Button -->
     <div class="text-center back-btn">
       <a href="/main" class="btn btn-secondary">Back to Home</a>
     </div>
   </div>
-  
+
+  <!-- Inject films data into the client-side script -->
+  <script>
+    const films = <%- JSON.stringify(films) %>;
+    console.log("Films data:", films);
+  </script>
+
   <!-- Client-Side Script for Sorting Films -->
   <script>
-  
-    let sortBy = 'avgRating'; 
+    let sortBy = 'avgRating';
+
     function renderFilms() {
       let sortedFilms = [...films];
       sortedFilms.sort((a, b) => b[sortBy] - a[sortBy]);
-      
+
       const filmsContainer = document.getElementById("films-container");
       filmsContainer.innerHTML = "";
-      
+
       sortedFilms.forEach(film => {
+        let posterHTML = film.Poster
+          ? `<img src="${film.Poster}" alt="${film.filmname}" style="width:150px; height:auto; margin-right:20px; border-radius:10px;">`
+          : `<p>No poster available</p>`;
+
         filmsContainer.innerHTML += `
           <div class="film-card">
-            <img src="${film.Poster !== 'N/A' ? film.Poster : '/default-image.jpg'}" alt="${film.filmname}">
+            ${posterHTML}
             <div>
               <h3>${film.filmname}</h3>
               <p><strong>IMDb ID:</strong> ${film.imdbID}</p>
@@ -117,20 +142,20 @@
         `;
       });
     }
-    
-    document.getElementById("sort-rating").addEventListener("click", function() {
+
+    document.getElementById("sort-rating").addEventListener("click", () => {
       sortBy = 'avgRating';
       renderFilms();
     });
-    
-    document.getElementById("sort-clicks").addEventListener("click", function() {
+
+    document.getElementById("sort-clicks").addEventListener("click", () => {
       sortBy = 'clicks';
       renderFilms();
     });
-    
 
+    document.addEventListener("DOMContentLoaded", renderFilms);
   </script>
-  
+
   <!-- Bootstrap Bundle with Popper from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

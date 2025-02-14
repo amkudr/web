@@ -104,6 +104,45 @@ app.get('/topFilms', async (req, res) => {
   }
 });
 
+app.get('/admin', async (req, res) => {
+  
+  try {
+    // Fetch all public links from the database or API
+    const response = await fetch(`http://localhost:3000/links/public`, {
+      method: "GET",
+      headers: { "Cookie": req.headers.cookie }
+    });
+
+    const data = await response.json();
+    
+    // Render the admin panel with the links data
+    res.render('admin', { links: data.links });
+
+  } catch (error) {
+    console.error("Error fetching links:", error);
+    
+    // Render the page with an empty links array in case of error
+    res.render('admin', { links: [] });
+  }
+});
+
+// Route to delete a link
+app.delete('/admin/delete/:linkID', async (req, res) => {
+  try {
+    const { linkID } = req.params;
+    
+    // Send a DELETE request to remove the link
+    await fetch(`http://localhost:3000/links/${linkID}`, { method: "DELETE",
+      headers: { "Cookie": req.headers.cookie }
+     });
+
+    res.status(200).json({ message: "Link deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting link:", error);
+    res.status(500).json({ error: "Failed to delete link" });
+  }
+});
+
 
 
 

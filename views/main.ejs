@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,30 +15,39 @@
       background-color: #121212;
       color: #fff;
     }
+
     .navbar {
       background-color: #1f1f1f;
     }
-    .navbar-brand, .nav-link, .navbar-text {
+
+    .navbar-brand,
+    .nav-link,
+    .navbar-text {
       color: #00ff00 !important;
     }
+
     .hero-section {
       padding: 100px 0;
       text-align: center;
       background: linear-gradient(135deg, #0f0, #050);
     }
+
     .hero-section h1 {
       font-size: 3rem;
       font-weight: bold;
       margin-bottom: 20px;
     }
+
     .hero-section p {
       font-size: 1.2rem;
       margin-bottom: 30px;
     }
+
     .search-section {
       margin: 0 auto;
       max-width: 600px;
     }
+
     .search-section .form-control {
       border-radius: 30px;
       padding: 20px;
@@ -46,6 +56,7 @@
       background-color: #222;
       color: #fff;
     }
+
     .search-section .btn {
       border-radius: 30px;
       padding: 10px 20px;
@@ -53,8 +64,9 @@
       background-color: #00ff00;
       border: none;
       color: #000;
-      margin-left: -1px; 
+      margin-left: -1px;
     }
+
     .footer {
       background-color: #1f1f1f;
       padding: 20px 0;
@@ -62,11 +74,13 @@
       margin-top: 50px;
       color: #00ff00;
     }
+
     .view-favorites-btn {
       margin-top: 20px;
     }
   </style>
 </head>
+
 <body>
   <!-- Navigation Bar -->
   <nav class="navbar navbar-expand-lg">
@@ -75,17 +89,20 @@
       <div class="collapse navbar-collapse">
         <div class="navbar-nav ms-auto">
           <% if (user) { %>
-            <span class="navbar-text me-3">Logged in as: <strong><%= user.username %></strong></span>
-          <% } else { %>
-            <span class="navbar-text me-3">Not logged in</span>
-          <% } %>
-          <a href="/logout" class="nav-link btn" style="background-color: rgb(214, 36, 78); color: white;">Logout</a>
+            <span class="navbar-text me-3">Logged in as: <strong>
+                <%= user.username %>
+              </strong></span>
+            <% } else { %>
+              <span class="navbar-text me-3">Not logged in</span>
+              <% } %>
+                <a href="/logout" class="nav-link btn"
+                  style="background-color: rgb(214, 36, 78); color: white;">Logout</a>
         </div>
       </div>
     </div>
   </nav>
 
- 
+
   <section class="hero-section">
     <div class="container">
       <h1>Discover Your Next Favorite Movie</h1>
@@ -98,6 +115,9 @@
         <div class="text-center view-favorites-btn">
           <a href="/myFavorites" class="btn btn-success">View Favorites</a>
           <a href="/topFilms" class="btn btn-info">View Top Films</a>
+          <% if (user && user.username === "admin") { %>
+            <a href="/admin" class="btn btn-danger">Admin Panel</a>
+          <% } %>          
         </div>
       </div>
     </div>
@@ -106,7 +126,7 @@
   <!-- Movies Container -->
   <div class="container my-5">
     <div class="row" id="movies-container">
-      
+
     </div>
   </div>
 
@@ -122,4 +142,5 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

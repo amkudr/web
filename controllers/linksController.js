@@ -51,6 +51,7 @@ exports.removeLink = async (req, res) => {
     try {
         const { linkID } = req.params;
         const result = await Links.removeLink(linkID);
+        console.log(result);
         res.json(result);
     } catch (error) {
         console.error("Error removing link:", error);

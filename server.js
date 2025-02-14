@@ -89,6 +89,7 @@ app.get('/myFavorites', async (req, res) => {
 
 app.get('/topFilms', async (req, res) => {
   try {
+    // Fetch film records from your SQL-based endpoint.
     const response = await fetch(`http://localhost:3000/links/public`, {
       method: "GET",
       headers: { "Cookie": req.headers.cookie }
@@ -96,14 +97,22 @@ app.get('/topFilms', async (req, res) => {
     const data = await response.json();
     let films = data.links;
 
-    const OMDbAPIKey = '13a68afd';
-    for (let film of films) {
-      const omdbResponse = await fetch(`http://www.omdbapi.com/?i=${film.imdbID}&apikey=${OMDbAPIKey}`);
-      const omdbData = await omdbResponse.json();
-      film.Poster = (omdbData.Response === 'True' && omdbData.Poster && omdbData.Poster !== 'N/A')
-        ? omdbData.Poster
-        : null;
-    }
+    const OMDbAPIKey = '13a68afd'; 
+
+    films = await Promise.all(films.map(async film => {
+      try {
+        const omdbResponse = await fetch(`http://www.omdbapi.com/?i=${film.imdbID}&apikey=${OMDbAPIKey}`);
+        const omdbData = await omdbResponse.json();
+        film.Poster =
+          (omdbData.Response === 'True' && omdbData.Poster && omdbData.Poster !== 'N/A')
+            ? omdbData.Poster
+            : null;
+      } catch (err) {
+        console.error(`Error fetching poster for film ${film.imdbID}:`, err);
+        film.Poster = null;
+      }
+      return film;
+    }));
 
     res.render('topFilms', { films: films, user: req.session.user });
   } catch (error) {

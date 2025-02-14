@@ -79,7 +79,6 @@ class Links {
      * }
      */
     static async removeLink(linkID) {
-        console.log(linkID);
         return new Promise((resolve, reject) => {
             linkDB.run("DELETE FROM Links WHERE linkID = ?", [linkID], function (err) {
                 if (err) reject(err);

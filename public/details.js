@@ -116,7 +116,7 @@ async function toggleFavorite(imdbID, button) {
     // Update the button text and color
     button.textContent = method === "POST" ? "Remove from Favorites" : "Add to Favorites";
     button.style.backgroundColor = method === "POST" ? "#f44336" : "#4CAF50";
-    
+
   } catch (error) {
     console.error("Error updating favorites:", error);
     Swal.fire("Error", error.message, "error");
@@ -139,7 +139,7 @@ async function loadLinks(imdbID) {
       console.error("Error: Element with ID 'links-list' not found.");
       return;
     }
-    
+
     // Clear the links list before loading new data
     linksList.innerHTML = '';
 
@@ -153,10 +153,14 @@ async function loadLinks(imdbID) {
       if (!links || links.length === 0) return ''; // Skip if no links available
       let linksHTML = `<h5>${title}</h5><ul class="list-group">`;
 
+
       links.forEach((link) => {
         const avgRating = link.avgRating !== null ? link.avgRating.toFixed(1) : "N/A";
         const votes = link.votes || 0;
-    
+
+        // Check if the current user is allowed to edit/remove this link
+        const canEditRemove = currentUser && (currentUser === "admin" || currentUser === link.creator);
+
         linksHTML += `
 
           <li class="list-group-item d-flex justify-content-between align-items-center" data-link-id="${link.linkID}">
@@ -173,17 +177,18 @@ async function loadLinks(imdbID) {
                   <button class="btn btn-sm btn-outline-primary" onclick="rateLink(${link.linkID}, ${rating}, '${link.imdbID}')">${rating} ⭐</button>
                 `).join('')}
               </div>
-            </div>
-    
-            <div>
-              <button class="btn btn-warning btn-sm" onclick="editLink('${link.linkID}', '${link.imdbID}')">Edit</button>
-              <button class="btn btn-danger btn-sm" onclick="removeLink('${link.linkID}','${link.imdbID}')">Remove</button>
-            </div>
+            </div>    
+            ${canEditRemove ? `
+              <div id="edit-remove-buttons">
+                <button class="btn btn-warning btn-sm" onclick="editLink('${link.linkID}', '${link.imdbID}')">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="removeLink('${link.linkID}','${link.imdbID}')">Remove</button>
+              </div>
+            ` : ''}
 
           </li>
         `;
       });
-    
+
       linksHTML += `</ul>`;
       return linksHTML;
     }
@@ -266,12 +271,12 @@ async function addLink(imdbID, filmname) {
       const url = document.getElementById('link-url').value.trim();
       const description = document.getElementById('link-description').value.trim();
       const visibility = document.querySelector('input[name="link-visibility"]:checked')?.value;
-    
+
       if (!name || !url || !description) {
         Swal.showValidationMessage("All fields (Name, URL, and Description) are required!");
         return false;
       }
-    
+
       return { name, url, description, isPrivate: visibility === "private" };
     }
   }).then(async (result) => {
@@ -339,17 +344,17 @@ async function editLink(linkID, imdbID) {
       const url = document.getElementById('link-url').value.trim();
       const description = document.getElementById('link-description').value.trim();
       const visibility = document.querySelector('input[name="link-visibility"]:checked')?.value;
-    
+
       if (!name || !url || !description) {
         Swal.showValidationMessage("All fields (Name, URL, and Description) are required!");
         return false;
       }
-    
+
       return { name, url, description, isPrivate: visibility === "private" };
     }
   }).then(async (result) => {
     if (result.isConfirmed) {
-     
+
       const { name, url, description, isPrivate } = result.value;
       const response = await fetch(`/links/${linkID}`, {
         method: "PUT",
@@ -406,7 +411,7 @@ function loadReviews() {
   const reviews = JSON.parse(localStorage.getItem(reviewsKey) || '[]');
   const reviewsList = document.getElementById("reviews-list");
   reviewsList.innerHTML = "";
-  
+
   if (reviews.length === 0) {
     reviewsList.innerHTML = "<div class='col-12 text-center'><p>No reviews yet.</p></div>";
   } else {
@@ -414,7 +419,7 @@ function loadReviews() {
       // Create a column for each review card
       const colDiv = document.createElement("div");
       colDiv.className = "col-12 col-md-6";
-      
+
       // Create the review card
       const card = document.createElement("div");
       card.className = "review-card";
@@ -433,23 +438,23 @@ function loadReviews() {
 function addReview() {
   const reviewText = document.getElementById("review-text").value;
   const reviewRating = document.getElementById("review-rating").value;
-  
+
   if (!reviewText || !reviewRating) {
     alert("Please provide both a review and a rating.");
     return;
   }
-  
+
   const reviewsKey = 'reviews_' + imdbID;
   let reviews = JSON.parse(localStorage.getItem(reviewsKey) || '[]');
-  
+
   // Include currentUser in the review object
   reviews.push({ username: currentUser, text: reviewText, rating: reviewRating });
   localStorage.setItem(reviewsKey, JSON.stringify(reviews));
-  
+
   // Clear the form fields
   document.getElementById("review-text").value = "";
   document.getElementById("review-rating").value = "";
-  
+
   loadReviews();
 }
 
@@ -459,7 +464,7 @@ function deleteReview(index) {
   let reviews = JSON.parse(localStorage.getItem(reviewsKey) || '[]');
   reviews.splice(index, 1);
   localStorage.setItem(reviewsKey, JSON.stringify(reviews));
-  
+
   loadReviews();
 }
 

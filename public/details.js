@@ -123,15 +123,25 @@ async function toggleFavorite(imdbID, button) {
   }
 }
 
-/**
- * Asynchronously loads and displays a list of links for a given IMDb ID.
- * Fetches the links from the server and populates the HTML element with ID 'links-list'.
- * Each link includes an edit and remove button.
- *
- * @param {string} imdbID - The IMDb ID for which to load the links.
- * @returns {Promise<void>} - A promise that resolves when the links have been loaded and displayed.
- */
+let currentPage = 1; // Tracks the current page number
+let linksPerPage = 3; // Number of links displayed per page
+let links = []; // Stores fetched links
 
+// Changes the page when pagination buttons are clicked
+function changePage(newPage) {
+  if (newPage < 1 || newPage > Math.ceil(links.length / linksPerPage)) return;
+  currentPage = newPage;
+  renderLinks(links);
+}
+
+// Updates the number of links displayed per page
+function changeLinksPerPage(value) {
+  linksPerPage = parseInt(value, 10);
+  currentPage = 1; // Reset to first page
+  renderLinks(links);
+}
+
+// Fetches links from the server and updates the UI
 async function loadLinks(imdbID) {
   try {
     const linksList = document.getElementById("links-list");
@@ -140,72 +150,87 @@ async function loadLinks(imdbID) {
       return;
     }
 
-    // Clear the links list before loading new data
     linksList.innerHTML = '';
 
-    // Fetch private and public links
-    const { links } = await fetchJSON(`/links/${imdbID}`);
-    const privateLinks = links.filter(link => link.isPrivate);
-    const publicLinks = links.filter(link => !link.isPrivate);
-
-    // Function to generate HTML for links list
-    function renderLinks(links, title) {
-      if (!links || links.length === 0) return ''; // Skip if no links available
-      let linksHTML = `<h5>${title}</h5><ul class="list-group">`;
-
-
-      links.forEach((link) => {
-        const avgRating = link.avgRating !== null ? link.avgRating.toFixed(1) : "N/A";
-        const votes = link.votes || 0;
-
-        // Check if the current user is allowed to edit/remove this link
-        const canEditRemove = currentUser && (currentUser === "admin" || currentUser === link.creator);
-
-        linksHTML += `
-
-          <li class="list-group-item d-flex justify-content-between align-items-center" data-link-id="${link.linkID}">
-            <div>
-              <strong>${link.name}</strong>: 
-              <a href="${link.url}" target="_blank" rel="noopener noreferrer" onclick="handleLinkClick(event,${link.linkID}, '${link.url}', '${link.imdbID}')" class="link-primary">${link.url}</a>
-              <div class="text-muted">${link.description}</div>
-            </div>
+    const response = await fetchJSON(`/links/${imdbID}`);
+    links = response.links || []; // Store fetched links globally
     
-            <div class="d-flex flex-column align-items-center">
-              <span class="badge bg-info text-dark">Rating: ${avgRating} (${votes} votes)</span>
-              <div class="rating-buttons">
-                ${[1, 2, 3, 4, 5].map(rating => `
-                  <button class="btn btn-sm btn-outline-primary" onclick="rateLink(${link.linkID}, ${rating}, '${link.imdbID}')">${rating} ⭐</button>
-                `).join('')}
-              </div>
-            </div>    
-            ${canEditRemove ? `
-              <div id="edit-remove-buttons">
-                <button class="btn btn-warning btn-sm" onclick="editLink('${link.linkID}', '${link.imdbID}')">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="removeLink('${link.linkID}','${link.imdbID}')">Remove</button>
-              </div>
-            ` : ''}
-
-          </li>
-        `;
-      });
-
-      linksHTML += `</ul>`;
-      return linksHTML;
-    }
-
-    // Build the HTML content only for non-empty lists
-    let htmlContent = '';
-    htmlContent += renderLinks(privateLinks, "Private Links");
-    htmlContent += renderLinks(publicLinks, "Public Links");
-
-    // Insert the generated HTML into the container
-    linksList.innerHTML = htmlContent || '<li class="text-muted">No links available</li>';
-
+    renderLinks(links);
   } catch (error) {
     console.error("Failed to load links:", error);
     document.getElementById("links-list").innerHTML = `<li class="text-danger">Error loading links</li>`;
   }
 }
+
+// Generates HTML for displaying links with pagination
+function renderLinks(links) {
+  if (!links || links.length === 0) {
+    document.getElementById("links-list").innerHTML = '<li class="text-muted">No links available</li>';
+    return;
+  }
+
+  const totalPages = Math.ceil(links.length / linksPerPage);
+  const startIndex = (currentPage - 1) * linksPerPage;
+  const paginatedLinks = links.slice(startIndex, startIndex + linksPerPage);
+
+  let linksHTML = `
+    <div>
+      <label for="linksPerPage">Show:</label>
+      <select id="linksPerPage" onchange="changeLinksPerPage(this.value)">
+        <option value="1" ${linksPerPage === 1 ? 'selected' : ''}>1</option>
+        <option value="2" ${linksPerPage === 2 ? 'selected' : ''}>2</option>
+        <option value="3" ${linksPerPage === 3 ? 'selected' : ''}>3</option>
+      </select>
+    </div>
+    <ul class="list-group">`;
+
+  paginatedLinks.forEach((link) => {
+    const avgRating = link.avgRating !== null ? link.avgRating.toFixed(1) : "N/A";
+    const votes = link.votes || 0;
+    const canEditRemove = currentUser && (currentUser === "admin" || currentUser === link.creator);
+    const linkType = link.isPrivate ? "(Private)" : "(Public)";
+
+    linksHTML += `
+      <li class="list-group-item d-flex justify-content-between align-items-center" data-link-id="${link.linkID}">
+        <div>
+          <strong>${link.name} ${linkType}</strong>: 
+          <a href="${link.url}" target="_blank" rel="noopener noreferrer" onclick="handleLinkClick(event,${link.linkID}, '${link.url}', '${link.imdbID}')" class="link-primary">${link.url}</a>
+          <div class="text-muted">${link.description}</div>
+        </div>
+
+        <div class="d-flex flex-column align-items-center">
+          <span class="badge bg-info text-dark">Rating: ${avgRating} (${votes} votes)</span>
+          <div class="rating-buttons">
+            ${[1, 2, 3, 4, 5].map(rating => `
+              <button class="btn btn-sm btn-outline-primary" onclick="rateLink(${link.linkID}, ${rating}, '${link.imdbID}')">${rating} ⭐</button>
+            `).join('')}
+          </div>
+        </div>    
+        ${canEditRemove ? `
+          <div id="edit-remove-buttons">
+            <button class="btn btn-warning btn-sm" onclick="editLink('${link.linkID}', '${link.imdbID}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="removeLink('${link.linkID}','${link.imdbID}')">Remove</button>
+          </div>
+        ` : ''}
+      </li>
+    `;
+  });
+
+  linksHTML += `</ul>`;
+
+  if (totalPages > 1) {
+    linksHTML += `
+      <div class="pagination-controls">
+        <button class="btn btn-sm btn-outline-secondary" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
+        <span>Page ${currentPage} of ${totalPages}</span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+      </div>
+    `;
+  }
+
+  document.getElementById("links-list").innerHTML = linksHTML;
+}
+
 
 async function rateLink(linkID, rating, imdbID) {
   try {
